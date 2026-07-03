@@ -1,7 +1,25 @@
 <template>
-    <div class="chat" :class="{ 'is-embedded': embeddedMode, 'is-sidebar-collapsed': uiStore.sidebarCollapsed }">
-        <div ref="scrollContainer" class="chat_scroll_box" @scroll="handleScroll">
-            <div class="msg_list" :class="{ 'is-embedded': embeddedMode }">
+    <div class="chat-notebook-layout" v-if="!embeddedMode">
+        <!-- 左栏：来源面板 -->
+        <transition name="panel-slide-left">
+            <div v-show="!notebookStore.layout.leftPanelCollapsed" class="nb-panel nb-panel-left"
+                :style="{ width: `${notebookStore.layout.leftPanelWidth}px` }">
+                <SourcePanel :collapsed="false" @toggle="notebookStore.toggleLeftPanel" />
+            </div>
+        </transition>
+        <div v-show="notebookStore.layout.leftPanelCollapsed" class="nb-collapsed nb-collapsed-left">
+            <button class="nb-expand-btn" title="展开来源面板" @click="notebookStore.toggleLeftPanel">
+                <t-icon name="chevron-right" size="16px" />
+            </button>
+        </div>
+        <div v-if="!notebookStore.layout.leftPanelCollapsed" class="nb-resize-handle nb-resize-left"
+            @mousedown="startResize('left', $event)" />
+
+        <!-- 中栏：对话区 -->
+        <div class="nb-panel nb-panel-center">
+            <div class="chat" :class="{ 'is-sidebar-collapsed': uiStore.sidebarCollapsed, 'has-left-panel': !notebookStore.layout.leftPanelCollapsed }">
+                <div ref="scrollContainer" class="chat_scroll_box" @scroll="handleScroll">
+                    <div class="msg_list" :class="{ 'is-embedded': embeddedMode }">
                 <!-- 消息列表骨架屏 -->
                 <div v-if="historyLoading && messagesList.length === 0" class="msg-skeleton-list">
                     <div class="msg-skeleton msg-skeleton-user">
@@ -90,20 +108,41 @@
                         <span></span>
                     </div>
                 </div>
+                    </div>
+                </div>
+                <transition name="scroll-btn-fade">
+                    <div v-show="userHasScrolledUp" class="scroll-to-bottom-btn" @click="onClickScrollToBottom">
+                        <t-icon name="chevron-down" size="20px" />
+                    </div>
+                </transition>
+                <div class="input-container" :class="{ 'is-embedded': embeddedMode }">
+                    <InputField ref="inputFieldRef"
+                        @send-msg="(query, modelId, mentionedItems, imageFiles, attachmentFiles) => sendMsg(query, modelId, mentionedItems, imageFiles, attachmentFiles)"
+                        @stop-generation="handleStopGeneration" :isReplying="isReplying" :sessionId="session_id"
+                        :assistantMessageId="currentAssistantMessageId" :embeddedMode="embeddedMode"></InputField>
+                </div>
             </div>
         </div>
-        <transition name="scroll-btn-fade">
-            <div v-show="userHasScrolledUp" class="scroll-to-bottom-btn" @click="onClickScrollToBottom">
-                <t-icon name="chevron-down" size="20px" />
+
+        <!-- 右栏拖拽 -->
+        <div v-if="!notebookStore.layout.rightPanelCollapsed" class="nb-resize-handle nb-resize-right"
+            @mousedown="startResize('right', $event)" />
+
+        <!-- 右栏：Studio 面板 -->
+        <transition name="panel-slide-right">
+            <div v-show="!notebookStore.layout.rightPanelCollapsed" class="nb-panel nb-panel-right"
+                :style="{ width: `${notebookStore.layout.rightPanelWidth}px` }">
+                <StudioPanel :collapsed="false" @toggle="notebookStore.toggleRightPanel" />
             </div>
         </transition>
-        <div class="input-container" :class="{ 'is-embedded': embeddedMode }">
-            <InputField ref="inputFieldRef"
-                @send-msg="(query, modelId, mentionedItems, imageFiles, attachmentFiles) => sendMsg(query, modelId, mentionedItems, imageFiles, attachmentFiles)"
-                @stop-generation="handleStopGeneration" :isReplying="isReplying" :sessionId="session_id"
-                :assistantMessageId="currentAssistantMessageId" :embeddedMode="embeddedMode"></InputField>
+        <div v-show="notebookStore.layout.rightPanelCollapsed" class="nb-collapsed nb-collapsed-right">
+            <button class="nb-expand-btn nb-studio-expand" title="展开 Studio" @click="notebookStore.toggleRightPanel">
+                <t-icon name="wand" size="16px" />
+            </button>
         </div>
     </div>
+
+    <!-- KnowledgeBaseEditorModal 放在最外层 -->
     <KnowledgeBaseEditorModal :visible="uiStore.showKBEditorModal" :mode="uiStore.kbEditorMode"
         :kb-id="uiStore.currentKBId || undefined" :initial-type="uiStore.kbEditorType"
         @update:visible="(val) => val ? null : uiStore.closeKBEditor()" @success="handleKBEditorSuccess" />
@@ -115,6 +154,9 @@ import { useRoute, onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router';
 import InputField from '../../components/Input-field.vue';
 import botmsg from './components/botmsg.vue';
 import usermsg from './components/usermsg.vue';
+import SourcePanel from '@/components/notebook/SourcePanel.vue';
+import StudioPanel from '@/components/notebook/StudioPanel.vue';
+import { useNotebookStore } from '@/stores/notebook';
 import { getMessageList, getSession } from "@/api/chat/index";
 import { getSuggestedQuestions } from "@/api/agent/index";
 import { useStream } from '../../api/chat/streame'
@@ -148,6 +190,7 @@ const isAgentStreamSession = () => {
 };
 
 const uiStore = useUIStore();
+const notebookStore = useNotebookStore();
 const { navigateToKnowledgeBaseList } = useKnowledgeBaseCreationNavigation();
 const { t } = useI18n();
 const { firstQuery, firstMentionedItems, firstModelId, firstImageFiles, firstAttachmentFiles } = storeToRefs(usemenuStore);
@@ -398,6 +441,39 @@ const debounce = (fn, delay) => {
         timer = setTimeout(() => fn(...args), delay)
     }
 }
+
+// ==== 面板拖拽调整宽度 ====
+let resizeType = null;
+let resizeStartX = 0;
+let resizeStartWidth = 0;
+const startResize = (type, e) => {
+    resizeType = type;
+    resizeStartX = e.clientX;
+    resizeStartWidth = type === 'left'
+        ? notebookStore.layout.leftPanelWidth
+        : notebookStore.layout.rightPanelWidth;
+    document.addEventListener('mousemove', onPanelResize);
+    document.addEventListener('mouseup', stopPanelResize);
+    document.body.style.cursor = 'ew-resize';
+    document.body.style.userSelect = 'none';
+};
+const onPanelResize = (e) => {
+    if (!resizeType) return;
+    const delta = e.clientX - resizeStartX;
+    if (resizeType === 'left') {
+        notebookStore.setLeftPanelWidth(resizeStartWidth + delta);
+    } else {
+        notebookStore.setRightPanelWidth(resizeStartWidth - delta);
+    }
+};
+const stopPanelResize = () => {
+    resizeType = null;
+    document.removeEventListener('mousemove', onPanelResize);
+    document.removeEventListener('mouseup', stopPanelResize);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+};
+
 const onChatScrollTop = () => {
     if (scrollLock.value || historyLoadingMore.value || !hasMoreHistory.value) return;
     if (!scrollContainer.value) return;
@@ -796,6 +872,13 @@ onMounted(async () => {
     window.addEventListener('session-messages-cleared', handleSessionCleared);
     messagesList.splice(0);
 
+    // 注册 Studio 面板的 prompt 发送回调
+    notebookStore.registerSendPrompt((prompt: string) => {
+        if (inputFieldRef.value?.triggerSend) {
+            inputFieldRef.value.triggerSend(prompt);
+        }
+    });
+
     // 初始化状态：加载历史消息时不应显示loading
     loading.value = false;
     isReplying.value = false;
@@ -834,6 +917,7 @@ const clearData = () => {
 }
 onUnmounted(() => {
     window.removeEventListener('session-messages-cleared', handleSessionCleared);
+    notebookStore.unregisterSendPrompt();
     if (recoverPollTimer) { clearTimeout(recoverPollTimer); recoverPollTimer = null; }
 });
 onBeforeRouteLeave((to, from, next) => {
@@ -850,27 +934,128 @@ onBeforeRouteUpdate((to, from, next) => {
 })
 </script>
 <style lang="less" scoped>
+// ==== 三栏 Notebook 布局 ====
+.chat-notebook-layout {
+    display: flex;
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+    min-width: 0;
+    position: relative;
+    overflow: hidden;
+}
+.nb-panel {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+}
+.nb-panel-left {
+    flex-shrink: 0;
+    border-right: 1px solid var(--td-component-stroke);
+    transition: width 0.2s ease;
+    background: var(--td-bg-color-container);
+    position: relative;
+    z-index: 2;
+}
+.nb-panel-center {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+.nb-panel-right {
+    flex-shrink: 0;
+    border-left: 1px solid var(--td-component-stroke);
+    transition: width 0.2s ease;
+    background: var(--td-bg-color-container);
+    position: relative;
+    z-index: 2;
+}
+.nb-collapsed {
+    width: 36px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 12px;
+    background: var(--td-bg-color-container);
+}
+.nb-collapsed-left {
+    border-right: 1px solid var(--td-component-stroke);
+}
+.nb-collapsed-right {
+    border-left: 1px solid var(--td-component-stroke);
+}
+.nb-expand-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: none;
+    background: var(--td-bg-color-secondarycontainer);
+    color: var(--td-text-color-secondary);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    &:hover {
+        background: var(--td-brand-color-light);
+        color: var(--td-brand-color);
+    }
+    &.nb-studio-expand {
+        color: var(--td-brand-color);
+    }
+}
+.nb-resize-handle {
+    width: 4px;
+    flex-shrink: 0;
+    cursor: ew-resize;
+    position: relative;
+    background: transparent;
+    z-index: 5;
+    transition: background 0.15s ease;
+    &::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 1px;
+        width: 2px;
+        height: 100%;
+        background: transparent;
+        transition: background 0.15s ease;
+    }
+    &:hover::after, &:active::after {
+        background: var(--td-brand-color);
+    }
+}
+.panel-slide-left-enter-active,
+.panel-slide-left-leave-active,
+.panel-slide-right-enter-active,
+.panel-slide-right-leave-active {
+    transition: transform 0.25s ease, opacity 0.2s ease;
+}
+.panel-slide-left-enter-from, .panel-slide-left-leave-to {
+    transform: translateX(-100%);
+    opacity: 0;
+}
+.panel-slide-right-enter-from, .panel-slide-right-leave-to {
+    transform: translateX(100%);
+    opacity: 0;
+}
+
 .chat {
     font-size: 20px;
-    // 右侧不留 padding，滚动条贴到内容区最右缘
-    padding: 20px 0 20px 20px;
+    padding: 0;
     box-sizing: border-box;
     flex: 1;
-    // The parent .platform-route-outlet is a flex column with min-height:0
-    // and overflow:hidden — we also need min-height:0 here so that our
-    // own flex:1 child (.chat_scroll_box) can shrink below its content
-    // height and scroll instead of pushing .input-container out of view.
     min-height: 0;
     position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
-    max-width: calc(100vw - 260px);
-    min-width: 400px;
-
-    &.is-sidebar-collapsed {
-        max-width: calc(100vw - 60px);
-    }
+    width: 100%;
+    height: 100%;
 
     &.is-embedded {
         max-width: 100%;
