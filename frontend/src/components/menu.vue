@@ -3,7 +3,7 @@
         <!-- 展开时：Logo + 搜索/折叠按钮同行 -->
         <div class="logo_row" v-if="!uiStore.sidebarCollapsed">
             <div class="logo_box" @click="router.push('/platform/knowledge-bases')" style="cursor: pointer;">
-                <img class="logo" src="@/assets/img/weknora.png" alt="">
+                <img class="logo" src="@/assets/img/xinwiki-logo.png" alt="">
                 <sup v-if="isLiteEdition" class="lite-badge">Lite</sup>
             </div>
             <div class="logo_actions">
@@ -85,7 +85,7 @@
                         <div class="menu_item-box">
                             <div class="menu_icon">
                                 <img class="icon"
-                                    :src="getImgSrc(item.icon == 'zhishiku' ? knowledgeIcon : item.icon == 'agent' ? agentIcon : item.icon == 'integration' ? integrationIcon : item.icon == 'organization' ? organizationIcon : item.icon == 'logout' ? logoutIcon : item.icon == 'setting' ? settingIcon : prefixIcon)"
+                                    :src="getImgSrc(item.icon == 'zhishiku' ? knowledgeIcon : item.icon == 'agent' ? agentIcon : item.icon == 'integration' ? integrationIcon : item.icon == 'organization' ? organizationIcon : item.icon == 'logout' ? logoutIcon : item.icon == 'setting' ? settingIcon : item.icon == 'notebook' ? notebookIcon : prefixIcon)"
                                     alt="">
                             </div>
                             <template v-if="!uiStore.sidebarCollapsed">
@@ -437,7 +437,9 @@ const getIconActiveState = (itemPath: string) => {
         ),
         isCreatChatActive: itemPath === 'creatChat' && (currentRoute === 'kbCreatChat' || currentRoute === 'globalCreatChat'),
         isSettingsActive: itemPath === 'settings' && currentRoute === 'settings',
-        isChatActive: itemPath === 'chat' && currentRoute === 'chat'
+        isChatActive: itemPath === 'chat' && currentRoute === 'chat',
+        isAgentsActive: currentRoute === 'agentList',
+        isNotebookActive: currentRoute === 'notebook'
     };
 };
 
@@ -1034,6 +1036,7 @@ let settingIcon = ref('setting.svg');
 let agentIcon = ref('agent.svg');
 let integrationIcon = ref('integration.svg');
 let organizationIcon = ref('organization.svg');
+let notebookIcon = ref('notebook.svg');
 let pathPrefix = ref(route.name)
 const getIcon = (path: string) => {
     // 根据当前路由状态更新所有图标
@@ -1061,6 +1064,10 @@ const getIcon = (path: string) => {
     // 设置图标：只在设置页面显示绿色
     settingIcon.value = settingsActiveState.isSettingsActive ? 'setting-green.svg' : 'setting.svg';
 
+    // Notebook 图标：只在 Notebook 页面显示绿色
+    const notebookActiveState = getIconActiveState('notebook');
+    notebookIcon.value = notebookActiveState.isNotebookActive ? 'notebook-green.svg' : 'notebook.svg';
+
     // 退出图标：始终显示默认
     logoutIcon.value = 'logout.svg';
 }
@@ -1085,6 +1092,9 @@ const handleMenuClick = async (path: string) => {
         // 设置菜单项：打开设置弹窗并跳转路由
         uiStore.openSettings()
         router.push('/platform/settings')
+    } else if (path === 'notebook') {
+        // Notebook 三栏对话页面
+        router.push('/platform/notebook')
     } else {
         gotopage(path)
     }

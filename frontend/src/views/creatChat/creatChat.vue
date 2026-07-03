@@ -1,49 +1,86 @@
 <template>
-    <div class="dialogue-wrap">
-        <div class="dialogue-answers">
-            <div class="dialogue-title" style="--wails-draggable: drag">
-                <span style="--wails-draggable: drag">{{ $t('createChat.title') }}</span>
+    <div class="creatchat-notebook-layout">
+        <!-- 左栏：来源面板 -->
+        <transition name="panel-slide-left">
+            <div v-show="!notebookStore.layout.leftPanelCollapsed" class="nb-panel nb-panel-left"
+                :style="{ width: `${notebookStore.layout.leftPanelWidth}px` }">
+                <SourcePanel :collapsed="false" @toggle="notebookStore.toggleLeftPanel" />
             </div>
-            <!-- 推荐问题 -->
-            <div ref="sqContainerRef" class="suggested-questions-container">
-                <!-- 骨架屏占位 -->
-                <div v-if="sqLoading && suggestedQuestions.length === 0" class="suggested-questions-inner">
-                    <div class="suggested-questions-title"><t-skeleton animation="gradient"
-                            :row-col="[{ width: '120px', height: '14px' }]" /></div>
-                    <div class="suggested-questions-grid">
-                        <div v-for="n in 6" :key="'sq-skel-' + n" class="suggested-question-card sq-card-skeleton">
-                            <t-skeleton animation="gradient"
-                                :row-col="[{ width: '100%', height: '14px', type: 'rect' }]" />
-                        </div>
+        </transition>
+        <div v-show="notebookStore.layout.leftPanelCollapsed" class="nb-collapsed nb-collapsed-left">
+            <button class="nb-expand-btn" title="展开来源面板" @click="notebookStore.toggleLeftPanel">
+                <t-icon name="chevron-right" size="16px" />
+            </button>
+        </div>
+        <div v-if="!notebookStore.layout.leftPanelCollapsed" class="nb-resize-handle nb-resize-left"
+            @mousedown="startResize('left', $event)" />
+
+        <!-- 中栏：新对话欢迎区 -->
+        <div class="nb-panel nb-panel-center">
+            <div class="dialogue-wrap">
+                <div class="dialogue-answers">
+                    <div class="dialogue-title" style="--wails-draggable: drag">
+                        <span style="--wails-draggable: drag">{{ $t('createChat.title') }}</span>
                     </div>
-                </div>
-                <transition v-else appear name="sq-slide-fade" mode="out-in" @before-leave="onBeforeLeave"
-                    @after-leave="onAfterLeave" @enter="onEnter" @after-enter="onQuestionsEntered">
-                    <div v-if="suggestedQuestions.length > 0" :key="sqRenderKey" class="suggested-questions-inner">
-                        <div class="suggested-questions-title-row">
-                            <p class="suggested-questions-caption">
-                                <span class="suggested-questions-title">{{ $t('chat.suggestedQuestions') }}</span>
-                                <button type="button" class="suggested-questions-refresh" :disabled="sqLoading"
-                                    :title="$t('chat.refreshSuggestedQuestions')"
-                                    :aria-label="$t('chat.refreshSuggestedQuestions')" @click="fetchSuggestedQuestions">
-                                    <t-icon :name="sqLoading ? 'loading' : 'refresh'"
-                                        :class="{ 'sq-refresh-spin': sqLoading }" />
-                                </button>
-                            </p>
-                        </div>
-                        <div class="suggested-questions-grid">
-                            <div v-for="(item, index) in suggestedQuestions" :key="item.question"
-                                class="suggested-question-card" :class="{ 'sq-card-visible': sqCardsRevealed }"
-                                :style="{ transitionDelay: sqCardsRevealed ? `${index * 50}ms` : '0ms' }"
-                                @click="handleSuggestedQuestionClick(item.question)">
-                                <span class="suggested-question-text">{{ item.question }}</span>
-                                <span v-if="item.source === 'faq'" class="suggested-question-badge faq">FAQ</span>
+                    <!-- 推荐问题 -->
+                    <div ref="sqContainerRef" class="suggested-questions-container">
+                        <!-- 骨架屏占位 -->
+                        <div v-if="sqLoading && suggestedQuestions.length === 0" class="suggested-questions-inner">
+                            <div class="suggested-questions-title"><t-skeleton animation="gradient"
+                                    :row-col="[{ width: '120px', height: '14px' }]" /></div>
+                            <div class="suggested-questions-grid">
+                                <div v-for="n in 6" :key="'sq-skel-' + n" class="suggested-question-card sq-card-skeleton">
+                                    <t-skeleton animation="gradient"
+                                        :row-col="[{ width: '100%', height: '14px', type: 'rect' }]" />
+                                </div>
                             </div>
                         </div>
+                        <transition v-else appear name="sq-slide-fade" mode="out-in" @before-leave="onBeforeLeave"
+                            @after-leave="onAfterLeave" @enter="onEnter" @after-enter="onQuestionsEntered">
+                            <div v-if="suggestedQuestions.length > 0" :key="sqRenderKey" class="suggested-questions-inner">
+                                <div class="suggested-questions-title-row">
+                                    <p class="suggested-questions-caption">
+                                        <span class="suggested-questions-title">{{ $t('chat.suggestedQuestions') }}</span>
+                                        <button type="button" class="suggested-questions-refresh" :disabled="sqLoading"
+                                            :title="$t('chat.refreshSuggestedQuestions')"
+                                            :aria-label="$t('chat.refreshSuggestedQuestions')" @click="fetchSuggestedQuestions">
+                                            <t-icon :name="sqLoading ? 'loading' : 'refresh'"
+                                                :class="{ 'sq-refresh-spin': sqLoading }" />
+                                        </button>
+                                    </p>
+                                </div>
+                                <div class="suggested-questions-grid">
+                                    <div v-for="(item, index) in suggestedQuestions" :key="item.question"
+                                        class="suggested-question-card" :class="{ 'sq-card-visible': sqCardsRevealed }"
+                                        :style="{ transitionDelay: sqCardsRevealed ? `${index * 50}ms` : '0ms' }"
+                                        @click="handleSuggestedQuestionClick(item.question)">
+                                        <span class="suggested-question-text">{{ item.question }}</span>
+                                        <span v-if="item.source === 'faq'" class="suggested-question-badge faq">FAQ</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </transition>
                     </div>
-                </transition>
+                    <InputField ref="inputFieldRef" @send-msg="sendMsg"></InputField>
+                </div>
             </div>
-            <InputField ref="inputFieldRef" @send-msg="sendMsg"></InputField>
+        </div>
+
+        <!-- 右栏拖拽 -->
+        <div v-if="!notebookStore.layout.rightPanelCollapsed" class="nb-resize-handle nb-resize-right"
+            @mousedown="startResize('right', $event)" />
+
+        <!-- 右栏：Studio 面板 -->
+        <transition name="panel-slide-right">
+            <div v-show="!notebookStore.layout.rightPanelCollapsed" class="nb-panel nb-panel-right"
+                :style="{ width: `${notebookStore.layout.rightPanelWidth}px` }">
+                <StudioPanel :collapsed="false" @toggle="notebookStore.toggleRightPanel" />
+            </div>
+        </transition>
+        <div v-show="notebookStore.layout.rightPanelCollapsed" class="nb-collapsed nb-collapsed-right">
+            <button class="nb-expand-btn nb-studio-expand" title="展开 Studio" @click="notebookStore.toggleRightPanel">
+                <t-icon name="wand" size="16px" />
+            </button>
         </div>
     </div>
 
@@ -55,9 +92,12 @@
         @update:visible="(val) => val ? null : uiStore.closeKBEditor()" @success="handleKBEditorSuccess" />
 </template>
 <script setup lang="ts">
-import { ref, watch, onMounted, nextTick, computed } from 'vue';
+import { ref, watch, onMounted, onUnmounted, nextTick, computed } from 'vue';
 import ContextualGuide from '@/components/ContextualGuide.vue';
 import InputField from '@/components/Input-field.vue';
+import SourcePanel from '@/components/notebook/SourcePanel.vue';
+import StudioPanel from '@/components/notebook/StudioPanel.vue';
+import { useNotebookStore } from '@/stores/notebook';
 import { createSessions } from "@/api/chat/index";
 import { getSuggestedQuestions } from "@/api/agent/index";
 import type { SuggestedQuestion } from "@/api/agent/index";
@@ -75,6 +115,7 @@ const route = useRoute();
 const usemenuStore = useMenuStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
+const notebookStore = useNotebookStore();
 const { t } = useI18n();
 const { navigateToKnowledgeBaseList } = useKnowledgeBaseCreationNavigation();
 
@@ -177,7 +218,15 @@ watch(
     { deep: true },
 );
 
-onMounted(() => { fetchSuggestedQuestions(); });
+onMounted(() => {
+    fetchSuggestedQuestions();
+    // 注册 Studio 面板的 prompt 发送回调
+    notebookStore.registerSendPrompt((prompt: string) => {
+        if (inputFieldRef.value?.triggerSend) {
+            inputFieldRef.value.triggerSend(prompt);
+        }
+    });
+});
 
 const inputFieldRef = ref();
 
@@ -193,16 +242,14 @@ async function createNewSession(value: string, modelId: string, mentionedItems: 
     const selectedKbs = settingsStore.settings.selectedKnowledgeBases || [];
     const selectedFiles = settingsStore.settings.selectedFiles || [];
 
-    // 构建 session 数据，包含 Agent 配置
     const sessionData: any = {};
 
-    // 添加 Agent 配置（知识库信息在 agent_config 中）
     sessionData.agent_config = {
         enabled: true,
         max_iterations: settingsStore.agentConfig.maxIterations,
         temperature: settingsStore.agentConfig.temperature,
-        knowledge_bases: selectedKbs,  // 所有选中的知识库
-        knowledge_ids: selectedFiles,  // 所有选中的普通知识/文件
+        knowledge_bases: selectedKbs,
+        knowledge_ids: selectedFiles,
         allowed_tools: settingsStore.agentConfig.allowedTools
     };
 
@@ -241,14 +288,160 @@ const handleKBEditorSuccess = (kbId: string) => {
     navigateToKnowledgeBaseList(kbId)
 }
 
+onUnmounted(() => {
+    notebookStore.unregisterSendPrompt();
+});
+
+// ==== 面板拖拽调整宽度 ====
+let resizeType: 'left' | 'right' | null = null;
+let resizeStartX = 0;
+let resizeStartWidth = 0;
+const startResize = (type: 'left' | 'right', e: MouseEvent) => {
+    resizeType = type;
+    resizeStartX = e.clientX;
+    resizeStartWidth = type === 'left'
+        ? notebookStore.layout.leftPanelWidth
+        : notebookStore.layout.rightPanelWidth;
+    document.addEventListener('mousemove', onPanelResize);
+    document.addEventListener('mouseup', stopPanelResize);
+    document.body.style.cursor = 'ew-resize';
+    document.body.style.userSelect = 'none';
+};
+const onPanelResize = (e: MouseEvent) => {
+    if (!resizeType) return;
+    const delta = e.clientX - resizeStartX;
+    if (resizeType === 'left') {
+        notebookStore.setLeftPanelWidth(resizeStartWidth + delta);
+    } else {
+        notebookStore.setRightPanelWidth(resizeStartWidth - delta);
+    }
+};
+const stopPanelResize = () => {
+    resizeType = null;
+    document.removeEventListener('mousemove', onPanelResize);
+    document.removeEventListener('mouseup', stopPanelResize);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+};
 </script>
 <style lang="less" scoped>
+// ==== 三栏 Notebook 布局 ====
+.creatchat-notebook-layout {
+    display: flex;
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+    min-width: 0;
+    position: relative;
+    overflow: hidden;
+}
+.nb-panel {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+}
+.nb-panel-left {
+    flex-shrink: 0;
+    border-right: 1px solid var(--td-component-stroke);
+    transition: width 0.2s ease;
+    background: var(--td-bg-color-container);
+    position: relative;
+    z-index: 2;
+}
+.nb-panel-center {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+.nb-panel-right {
+    flex-shrink: 0;
+    border-left: 1px solid var(--td-component-stroke);
+    transition: width 0.2s ease;
+    background: var(--td-bg-color-container);
+    position: relative;
+    z-index: 2;
+}
+.nb-collapsed {
+    width: 36px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 12px;
+    background: var(--td-bg-color-container);
+}
+.nb-collapsed-left {
+    border-right: 1px solid var(--td-component-stroke);
+}
+.nb-collapsed-right {
+    border-left: 1px solid var(--td-component-stroke);
+}
+.nb-expand-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: none;
+    background: var(--td-bg-color-secondarycontainer);
+    color: var(--td-text-color-secondary);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    &:hover {
+        background: var(--td-brand-color-light);
+        color: var(--td-brand-color);
+    }
+    &.nb-studio-expand {
+        color: var(--td-brand-color);
+    }
+}
+.nb-resize-handle {
+    width: 4px;
+    flex-shrink: 0;
+    cursor: ew-resize;
+    position: relative;
+    background: transparent;
+    z-index: 5;
+    transition: background 0.15s ease;
+    &::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 1px;
+        width: 2px;
+        height: 100%;
+        background: transparent;
+        transition: background 0.15s ease;
+    }
+    &:hover::after, &:active::after {
+        background: var(--td-brand-color);
+    }
+}
+.panel-slide-left-enter-active,
+.panel-slide-left-leave-active,
+.panel-slide-right-enter-active,
+.panel-slide-right-leave-active {
+    transition: transform 0.25s ease, opacity 0.2s ease;
+}
+.panel-slide-left-enter-from, .panel-slide-left-leave-to {
+    transform: translateX(-100%);
+    opacity: 0;
+}
+.panel-slide-right-enter-from, .panel-slide-right-leave-to {
+    transform: translateX(100%);
+    opacity: 0;
+}
+
 .dialogue-wrap {
     flex: 1;
     display: flex;
     justify-content: center;
     align-items: center;
-    // position: relative;
+    width: 100%;
+    height: 100%;
 }
 
 .dialogue-answers {
@@ -258,10 +451,12 @@ const handleKBEditorSuccess = (kbId: string) => {
     width: 100%;
     max-width: 800px;
     gap: 24px;
+    padding: 0 24px;
 
     :deep(.answers-input) {
         position: static;
         transform: translateX(0);
+        width: 100%;
     }
 }
 
@@ -306,6 +501,7 @@ const handleKBEditorSuccess = (kbId: string) => {
 
 .suggested-questions-container {
     max-width: 800px;
+    width: 100%;
     margin: 0;
     padding: 0 16px;
     transition: height 0.35s @suggested-ease;
@@ -362,46 +558,6 @@ const handleKBEditorSuccess = (kbId: string) => {
         transform: scale(0.98);
     }
 }
-
-@media (max-width: 1250px) and (min-width: 1045px) {
-    .answers-input {
-        transform: translateX(-329px);
-    }
-
-    :deep(.t-textarea__inner) {
-        width: 654px !important;
-    }
-}
-
-@media (max-width: 1045px) {
-    .answers-input {
-        transform: translateX(-250px);
-    }
-
-    :deep(.t-textarea__inner) {
-        width: 500px !important;
-    }
-}
-
-@media (max-width: 750px) {
-    .answers-input {
-        transform: translateX(-250px);
-    }
-
-    :deep(.t-textarea__inner) {
-        width: 340px !important;
-    }
-}
-
-@media (max-width: 600px) {
-    .answers-input {
-        transform: translateX(-250px);
-    }
-
-    :deep(.t-textarea__inner) {
-        width: 300px !important;
-    }
-}
 </style>
 <style lang="less">
 .del-menu-popup {
@@ -414,7 +570,6 @@ const handleKBEditorSuccess = (kbId: string) => {
         padding-left: 14px;
         cursor: pointer;
         margin-top: 4px !important;
-
     }
 }
 </style>
