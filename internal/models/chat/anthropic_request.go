@@ -19,6 +19,11 @@ func convertToolsToAnthropic(tools []openai.Tool) []map[string]any {
 			} else if tool.Function.Parameters != nil {
 				schema = tool.Function.Parameters
 			}
+			// Anthropic API rejects input_schema: null with HTTP 400. Default
+			// to an empty object schema when no parameters were provided.
+			if schema == nil {
+				schema = map[string]any{"type": "object", "properties": map[string]any{}}
+			}
 			result = append(result, map[string]any{
 				"name":         tool.Function.Name,
 				"description":  tool.Function.Description,

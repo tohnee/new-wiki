@@ -339,6 +339,31 @@ func (anthropicProvider) BuildRequestBody(req *openai.ChatCompletionRequest, _ [
 		body["tools"] = convertToolsToAnthropic(req.Tools)
 	}
 
+	// OpenAI tool_choice → Anthropic tool_choice
+	if req.ToolChoice != nil {
+		switch tc := req.ToolChoice.(type) {
+		case string:
+			switch tc {
+			case "auto":
+				body["tool_choice"] = map[string]any{"type": "auto"}
+			case "required":
+				body["tool_choice"] = map[string]any{"type": "any"} // Anthropic uses "any" not "required"
+			case "none":
+				// Anthropic doesn't support "none"; omitting tool_choice is enough
+			}
+		case openai.ToolChoice:
+			if tc.Type == "function" && tc.Function.Name != "" {
+				body["tool_choice"] = map[string]any{"type": "tool", "name": tc.Function.Name}
+			}
+		case map[string]any:
+			if fn, ok := tc["function"].(map[string]any); ok {
+				if name, ok := fn["name"].(string); ok {
+					body["tool_choice"] = map[string]any{"type": "tool", "name": name}
+				}
+			}
+		}
+	}
+
 	return body
 }
 
@@ -349,8 +374,11 @@ func (anthropicProvider) BuildRequestBody(req *openai.ChatCompletionRequest, _ [
 func (anthropicProvider) ParseResponse(body []byte) (*types.ChatResponse, error) {
 	var resp struct {
 		Content []struct {
-			Type string `json:"type"`
-			Text string `json:"text"`
+			Type  string          `json:"type"`
+			Text  string          `json:"text"`
+			ID    string          `json:"id"`
+			Name  string          `json:"name"`
+			Input json.RawMessage `json:"input"`
 		} `json:"content"`
 		StopReason string `json:"stop_reason"`
 		Usage      struct {
@@ -363,14 +391,32 @@ func (anthropicProvider) ParseResponse(body []byte) (*types.ChatResponse, error)
 	}
 
 	parts := make([]string, 0, len(resp.Content))
+	var toolCalls []types.LLMToolCall
 	for _, part := range resp.Content {
-		if part.Type == "text" && part.Text != "" {
-			parts = append(parts, part.Text)
+		switch part.Type {
+		case "text":
+			if part.Text != "" {
+				parts = append(parts, part.Text)
+			}
+		case "tool_use":
+			args := "{}"
+			if len(part.Input) > 0 {
+				args = string(part.Input)
+			}
+			toolCalls = append(toolCalls, types.LLMToolCall{
+				ID:   part.ID,
+				Type: "function",
+				Function: types.FunctionCall{
+					Name:      part.Name,
+					Arguments: args,
+				},
+			})
 		}
 	}
 
 	return &types.ChatResponse{
 		Content:      strings.Join(parts, ""),
+		ToolCalls:    toolCalls,
 		FinishReason: resp.StopReason,
 		Usage: types.TokenUsage{
 			PromptTokens:     resp.Usage.InputTokens,
