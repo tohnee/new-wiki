@@ -265,9 +265,27 @@ func shapeOpenAIReasoning(req *openai.ChatCompletionRequest) {
 	req.MaxTokens = 0
 }
 
+// --- Anthropic: native messages API + tool_use/tool_result ---
+
+type anthropicProvider struct{ baseProvider }
+
+func (anthropicProvider) Name() provider.ProviderName { return provider.ProviderAnthropic }
+
+func (anthropicProvider) ForceRawHTTP() bool { return true }
+
+func (anthropicProvider) Endpoint(baseURL, _ string, _ bool) string {
+	return strings.TrimRight(baseURL, "/") + "/v1/messages"
+}
+
+func (anthropicProvider) Auth(req *http.Request, creds authCreds, _ []byte) {
+	req.Header.Set("x-api-key", creds.APIKey)
+	req.Header.Set("anthropic-version", "2023-06-01")
+}
+
 // providerRegistry is ordered: more specific adapters (those with a real
 // Matches predicate) must precede the generic catch-all for the same provider.
 var providerRegistry = []providerAdapter{
+	anthropicProvider{},
 	weKnoraCloudProvider{},
 	qwenThinkingProvider{},
 	lkeapProvider{},
