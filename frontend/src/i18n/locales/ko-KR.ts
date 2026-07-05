@@ -3088,10 +3088,8 @@ export default {
     },
   },
   createChat: {
-    title: "안녕하세요, WeKnora입니다 — 당신의 지식을 손끝에",
     newSessionTitle: "새 세션",
     messages: {
-      selectKnowledgeBase: "먼저 지식베이스를 선택해주세요",
       createFailed: "세션 생성 실패",
       createError: "세션 생성 실패, 나중에 다시 시도해주세요",
     },

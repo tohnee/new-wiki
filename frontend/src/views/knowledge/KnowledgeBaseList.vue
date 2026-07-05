@@ -1814,8 +1814,8 @@ const handleUploadFinishedEvent = (event: Event) => {
   display: inline-flex;
   align-items: center;
   padding: 2px 6px;
-  background: rgba(7, 192, 95, 0.1);
-  border-radius: 4px;
+  background: rgba(0, 113, 227, 0.1);
+  border-radius: var(--td-radius-small, 4px);
   font-size: 12px;
   color: var(--td-brand-color);
   margin-left: 6px;
@@ -1840,10 +1840,12 @@ const handleUploadFinishedEvent = (event: Event) => {
   justify-content: center !important;
   background: var(--td-bg-color-secondarycontainer) !important;
   border: 1px solid var(--td-component-stroke) !important;
-  border-radius: 6px !important;
+  border-radius: var(--td-radius-small, 6px) !important;
   color: var(--td-text-color-secondary);
   cursor: pointer;
-  transition: background 0.2s, border-color 0.2s, color 0.2s;
+  transition-property: background-color, border-color, color;
+  transition-duration: 200ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 
   &:hover {
     background: var(--td-bg-color-secondarycontainer) !important;
@@ -1874,7 +1876,9 @@ const handleUploadFinishedEvent = (event: Event) => {
     font-weight: 400;
     user-select: none;
     position: relative;
-    transition: color 0.2s ease;
+    transition-property: color;
+    transition-duration: 200ms;
+    transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 
     &:hover {
       color: var(--td-text-color-primary);
@@ -1892,7 +1896,7 @@ const handleUploadFinishedEvent = (event: Event) => {
         right: 0;
         height: 2px;
         background: var(--td-brand-color);
-        border-radius: 1px;
+        border-radius: var(--td-radius-small, 1px);
       }
     }
   }
@@ -1909,8 +1913,8 @@ const handleUploadFinishedEvent = (event: Event) => {
   align-items: center;
   gap: 4px;
   padding: 2px 8px;
-  background: rgba(7, 192, 95, 0.1);
-  border-radius: 4px;
+  background: rgba(0, 113, 227, 0.1);
+  border-radius: var(--td-radius-small, 4px);
   font-size: 12px;
   color: var(--td-brand-color);
   font-weight: 500;
@@ -1926,13 +1930,15 @@ const handleUploadFinishedEvent = (event: Event) => {
   align-items: center;
   gap: 5px;
   padding: 3px 8px;
-  background: rgba(7, 192, 95, 0.06);
-  border-radius: 6px;
+  background: rgba(0, 113, 227, 0.06);
+  border-radius: var(--td-radius-small, 6px);
   font-size: 12px;
   line-height: 1.4;
   color: var(--td-text-color-secondary);
   max-width: 140px;
-  transition: background-color 0.15s ease;
+  transition-property: background-color;
+  transition-duration: 150ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 
   span {
     overflow: hidden;
@@ -1960,13 +1966,15 @@ const handleUploadFinishedEvent = (event: Event) => {
   align-items: center;
   gap: 5px;
   padding: 3px 8px;
-  background: rgba(7, 192, 95, 0.06);
-  border-radius: 6px;
+  background: rgba(0, 113, 227, 0.06);
+  border-radius: var(--td-radius-small, 6px);
   font-size: 11px;
   line-height: 1.4;
   color: var(--td-text-color-secondary);
   font-weight: 500;
-  transition: background-color 0.15s ease;
+  transition-property: background-color;
+  transition-duration: 150ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 
   span {
     font-weight: 500;
@@ -1983,35 +1991,35 @@ const handleUploadFinishedEvent = (event: Event) => {
 
   // 共享知识库根据类型显示不同样式
   &.kb-type-document {
-    background: linear-gradient(135deg, var(--td-bg-color-container) 0%, rgba(7, 192, 95, 0.04) 100%) !important;
+    background: linear-gradient(135deg, var(--td-bg-color-container) 0%, rgba(0, 113, 227, 0.04) 100%) !important;
 
     &:hover {
       border-color: var(--td-brand-color) !important;
-      box-shadow: 0 4px 12px rgba(7, 192, 95, 0.12) !important;
-      background: linear-gradient(135deg, var(--td-bg-color-container) 0%, rgba(7, 192, 95, 0.08) 100%) !important;
+      box-shadow: 0 4px 12px rgba(0, 113, 227, 0.12) !important;
+      background: linear-gradient(135deg, var(--td-bg-color-container) 0%, rgba(0, 113, 227, 0.08) 100%) !important;
     }
 
     &::after {
-      background: linear-gradient(135deg, rgba(7, 192, 95, 0.08) 0%, transparent 100%) !important;
+      background: linear-gradient(135deg, rgba(0, 113, 227, 0.08) 0%, transparent 100%) !important;
     }
   }
 
   &.kb-type-faq {
-    background: linear-gradient(135deg, var(--td-bg-color-container) 0%, rgba(0, 82, 217, 0.04) 100%) !important;
+    background: linear-gradient(135deg, var(--td-bg-color-container) 0%, rgba(0, 113, 227, 0.04) 100%) !important;
 
     &:hover {
       border-color: var(--td-brand-color) !important;
-      box-shadow: 0 4px 12px rgba(0, 82, 217, 0.12) !important;
-      background: linear-gradient(135deg, var(--td-bg-color-container) 0%, rgba(0, 82, 217, 0.08) 100%) !important;
+      box-shadow: 0 4px 12px rgba(0, 113, 227, 0.12) !important;
+      background: linear-gradient(135deg, var(--td-bg-color-container) 0%, rgba(0, 113, 227, 0.08) 100%) !important;
     }
 
     &::after {
-      background: linear-gradient(135deg, rgba(0, 82, 217, 0.08) 0%, transparent 100%) !important;
+      background: linear-gradient(135deg, rgba(0, 113, 227, 0.08) 0%, transparent 100%) !important;
     }
 
     // FAQ 类型共享标识使用蓝色
     .shared-badge {
-      background: rgba(0, 82, 217, 0.1);
+      background: rgba(0, 113, 227, 0.1);
       color: var(--td-brand-color);
 
       .t-icon {
@@ -2025,12 +2033,12 @@ const handleUploadFinishedEvent = (event: Event) => {
     align-items: center;
     gap: 4px;
     font-size: 12px;
-    border-color: rgba(0, 82, 217, 0.15);
+    border-color: rgba(0, 113, 227, 0.15);
     color: var(--td-brand-color);
-    background: rgba(0, 82, 217, 0.04);
+    background: rgba(0, 113, 227, 0.04);
     font-weight: 500;
     padding: 2px 8px;
-    border-radius: 4px;
+    border-radius: var(--td-radius-small, 4px);
     max-width: fit-content;
   }
 }
@@ -2044,7 +2052,7 @@ const handleUploadFinishedEvent = (event: Event) => {
   margin-bottom: 20px;
   background: var(--td-warning-color-light);
   border: 1px solid var(--td-warning-color-focus);
-  border-radius: 6px;
+  border-radius: var(--td-radius-small, 6px);
   color: var(--td-warning-color);
   font-family: var(--app-font-family);
   font-size: 14px;
@@ -2068,7 +2076,7 @@ const handleUploadFinishedEvent = (event: Event) => {
   gap: 12px;
   padding: 12px 16px;
   border: 1px solid var(--td-component-stroke);
-  border-radius: 8px;
+  border-radius: var(--td-radius-default, 8px);
   background: var(--td-bg-color-container);
 }
 
@@ -2121,7 +2129,9 @@ const handleUploadFinishedEvent = (event: Event) => {
 .progress-bar-inner {
   height: 100%;
   background: linear-gradient(90deg, var(--td-brand-color-active) 0%, var(--td-brand-color) 100%);
-  transition: width 0.2s ease;
+  transition-property: width;
+  transition-duration: 200ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 @keyframes contentFadeIn {
@@ -2182,7 +2192,7 @@ const handleUploadFinishedEvent = (event: Event) => {
   }
 
   &:focus-visible {
-    box-shadow: 0 0 0 2px var(--td-brand-color-focus, rgba(0, 82, 217, 0.2));
+    box-shadow: 0 0 0 2px var(--td-brand-color-focus, rgba(0, 113, 227, 0.2));
   }
 
   // Icons inherit the section header's text color so the whole row
@@ -2197,7 +2207,9 @@ const handleUploadFinishedEvent = (event: Event) => {
   .kb-section-toggle {
     margin-left: 4px;
     opacity: 0.7;
-    transition: opacity 0.15s ease;
+    transition-property: opacity;
+    transition-duration: 150ms;
+    transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
   }
 
   // 共享给我的两个子分组共用一个主图标 usergroup-add，再用子图标
@@ -2212,7 +2224,7 @@ const handleUploadFinishedEvent = (event: Event) => {
   .kb-section-count {
     margin-left: 2px;
     padding: 0 6px;
-    border-radius: 8px;
+    border-radius: var(--td-radius-default, 8px);
     background: var(--td-bg-color-secondarycontainer);
     color: var(--td-text-color-secondary);
     font-size: 11px;
@@ -2227,14 +2239,16 @@ const handleUploadFinishedEvent = (event: Event) => {
 
 .kb-card {
   border: 1px solid var(--td-component-stroke);
-  border-radius: 8px;
+  border-radius: var(--td-radius-default, 8px);
   overflow: hidden;
   box-sizing: border-box;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   background: var(--td-bg-color-container);
   position: relative;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition-property: border-color, box-shadow, background, transform;
+  transition-duration: 250ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
   padding: 12px 14px;
   display: flex;
   flex-direction: column;
@@ -2259,7 +2273,7 @@ const handleUploadFinishedEvent = (event: Event) => {
 
   &:hover {
     border-color: var(--td-brand-color);
-    box-shadow: 0 4px 12px rgba(7, 192, 95, 0.12);
+    box-shadow: 0 4px 12px rgba(0, 113, 227, 0.12);
   }
 
   &.uninitialized {
@@ -2268,11 +2282,11 @@ const handleUploadFinishedEvent = (event: Event) => {
 
   // 文档类型样式
   &.kb-type-document {
-    background: linear-gradient(135deg, var(--td-bg-color-container) 0%, rgba(7, 192, 95, 0.04) 100%);
+    background: linear-gradient(135deg, var(--td-bg-color-container) 0%, rgba(0, 113, 227, 0.04) 100%);
 
     &:hover {
       border-color: var(--td-brand-color);
-      background: linear-gradient(135deg, var(--td-bg-color-container) 0%, rgba(7, 192, 95, 0.08) 100%);
+      background: linear-gradient(135deg, var(--td-bg-color-container) 0%, rgba(0, 113, 227, 0.08) 100%);
     }
 
     // 右上角装饰
@@ -2283,8 +2297,8 @@ const handleUploadFinishedEvent = (event: Event) => {
       right: 0;
       width: 60px;
       height: 60px;
-      background: linear-gradient(135deg, rgba(7, 192, 95, 0.08) 0%, transparent 100%);
-      border-radius: 0 12px 0 100%;
+      background: linear-gradient(135deg, rgba(0, 113, 227, 0.08) 0%, transparent 100%);
+      border-radius: 0 var(--td-radius-large, 12px) 0 100%;
       pointer-events: none;
       z-index: 0;
     }
@@ -2292,12 +2306,12 @@ const handleUploadFinishedEvent = (event: Event) => {
 
   // 问答类型样式
   &.kb-type-faq {
-    background: linear-gradient(135deg, var(--td-bg-color-container) 0%, rgba(0, 82, 217, 0.04) 100%);
+    background: linear-gradient(135deg, var(--td-bg-color-container) 0%, rgba(0, 113, 227, 0.04) 100%);
 
     &:hover {
       border-color: var(--td-brand-color);
-      box-shadow: 0 4px 12px rgba(0, 82, 217, 0.12);
-      background: linear-gradient(135deg, var(--td-bg-color-container) 0%, rgba(0, 82, 217, 0.08) 100%);
+      box-shadow: 0 4px 12px rgba(0, 113, 227, 0.12);
+      background: linear-gradient(135deg, var(--td-bg-color-container) 0%, rgba(0, 113, 227, 0.08) 100%);
     }
 
     // 右上角装饰
@@ -2308,8 +2322,8 @@ const handleUploadFinishedEvent = (event: Event) => {
       right: 0;
       width: 60px;
       height: 60px;
-      background: linear-gradient(135deg, rgba(0, 82, 217, 0.08) 0%, transparent 100%);
-      border-radius: 0 12px 0 100%;
+      background: linear-gradient(135deg, rgba(0, 113, 227, 0.08) 0%, transparent 100%);
+      border-radius: 0 var(--td-radius-large, 12px) 0 100%;
       pointer-events: none;
       z-index: 0;
     }
@@ -2329,11 +2343,13 @@ const handleUploadFinishedEvent = (event: Event) => {
     justify-content: center;
     background: transparent;
     border: none;
-    border-radius: 6px;
+    border-radius: var(--td-radius-small, 6px);
     color: var(--td-text-color-secondary);
     cursor: pointer;
     opacity: 0;
-    transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+    transition-property: opacity, background-color, color;
+    transition-duration: 150ms;
+    transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 
     &:hover {
       background: var(--td-bg-color-secondarycontainer);
@@ -2425,10 +2441,12 @@ const handleUploadFinishedEvent = (event: Event) => {
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 6px;
+    border-radius: var(--td-radius-small, 6px);
     color: var(--td-text-color-placeholder);
     cursor: pointer;
-    transition: all 0.2s;
+    transition-property: background-color, color;
+    transition-duration: 200ms;
+    transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 
     &:hover {
       background: var(--td-bg-color-container-hover);
@@ -2461,10 +2479,12 @@ const handleUploadFinishedEvent = (event: Event) => {
   height: 24px;
   justify-content: center;
   align-items: center;
-  border-radius: 6px;
+  border-radius: var(--td-radius-small, 6px);
   cursor: pointer;
   flex-shrink: 0;
-  transition: all 0.2s ease;
+  transition-property: background-color, opacity;
+  transition-duration: 200ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
   opacity: 0;
 
   .kb-card:hover & {
@@ -2552,19 +2572,21 @@ const handleUploadFinishedEvent = (event: Event) => {
   justify-content: center;
   width: 22px;
   height: 22px;
-  border-radius: 5px;
+  border-radius: var(--td-radius-small, 5px);
   cursor: default;
-  transition: background 0.2s ease;
+  transition-property: background-color;
+  transition-duration: 200ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 
   &.type-document {
-    background: rgba(7, 192, 95, 0.08);
+    background: rgba(0, 113, 227, 0.08);
     color: var(--td-brand-color-active);
     width: auto;
     padding: 0 6px;
     gap: 3px;
 
     &:hover {
-      background: rgba(7, 192, 95, 0.12);
+      background: rgba(0, 113, 227, 0.12);
     }
 
     .badge-count {
@@ -2578,14 +2600,14 @@ const handleUploadFinishedEvent = (event: Event) => {
   }
 
   &.type-faq {
-    background: rgba(0, 82, 217, 0.08);
+    background: rgba(0, 113, 227, 0.08);
     color: var(--td-brand-color);
     width: auto;
     padding: 0 6px;
     gap: 3px;
 
     &:hover {
-      background: rgba(0, 82, 217, 0.12);
+      background: rgba(0, 113, 227, 0.12);
     }
 
     .badge-count {
@@ -2618,7 +2640,7 @@ const handleUploadFinishedEvent = (event: Event) => {
 
   &.question {
     background: rgba(0, 150, 136, 0.08);
-    color: var(--td-success-color);
+    color: var(--td-brand-color);
 
     &:hover {
       background: rgba(0, 150, 136, 0.12);
@@ -2626,20 +2648,20 @@ const handleUploadFinishedEvent = (event: Event) => {
   }
 
   &.shared {
-    background: rgba(0, 82, 217, 0.08);
+    background: rgba(0, 113, 227, 0.08);
     color: var(--td-brand-color);
 
     &:hover {
-      background: rgba(0, 82, 217, 0.12);
+      background: rgba(0, 113, 227, 0.12);
     }
   }
 
   &.role-admin {
-    background: rgba(7, 192, 95, 0.1);
+    background: rgba(0, 113, 227, 0.1);
     color: var(--td-brand-color-active);
 
     &:hover {
-      background: rgba(7, 192, 95, 0.15);
+      background: rgba(0, 113, 227, 0.15);
     }
   }
 
@@ -2675,19 +2697,19 @@ const handleUploadFinishedEvent = (event: Event) => {
 @keyframes highlightFlash {
   0% {
     border-color: var(--td-brand-color);
-    box-shadow: 0 0 0 0 rgba(7, 192, 95, 0.4);
+    box-shadow: 0 0 0 0 rgba(0, 113, 227, 0.4);
     transform: scale(1);
   }
 
   50% {
     border-color: var(--td-brand-color);
-    box-shadow: 0 0 0 8px rgba(7, 192, 95, 0);
+    box-shadow: 0 0 0 8px rgba(0, 113, 227, 0);
     transform: scale(1.02);
   }
 
   100% {
     border-color: var(--td-brand-color);
-    box-shadow: 0 0 0 0 rgba(7, 192, 95, 0);
+    box-shadow: 0 0 0 0 rgba(0, 113, 227, 0);
     transform: scale(1);
   }
 }
@@ -2695,7 +2717,7 @@ const handleUploadFinishedEvent = (event: Event) => {
 .kb-card.highlight-flash {
   animation: highlightFlash 0.6s ease-in-out 3;
   border-color: var(--td-brand-color) !important;
-  box-shadow: 0 0 12px rgba(7, 192, 95, 0.3) !important;
+  box-shadow: 0 0 12px rgba(0, 113, 227, 0.3) !important;
 }
 
 .card-time {
@@ -2777,7 +2799,7 @@ const handleUploadFinishedEvent = (event: Event) => {
 // 删除确认对话框样式
 :deep(.del-knowledge-dialog) {
   padding: 0px !important;
-  border-radius: 6px !important;
+  border-radius: var(--td-radius-small, 6px) !important;
 
   .t-dialog__header {
     display: none;
@@ -2869,20 +2891,22 @@ const handleUploadFinishedEvent = (event: Event) => {
   gap: 4px;
   padding: 4px 8px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--td-radius-small, 6px);
   background: transparent;
   color: var(--td-brand-color);
   font-size: 13px;
   font-family: var(--app-font-family);
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition-property: background-color, color;
+  transition-duration: 200ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 
   .t-icon {
     flex-shrink: 0;
   }
 
   &:hover {
-    background: rgba(7, 192, 95, 0.08);
+    background: rgba(0, 113, 227, 0.08);
     color: var(--td-brand-color);
   }
 }
@@ -2931,14 +2955,16 @@ const handleUploadFinishedEvent = (event: Event) => {
   width: 32px;
   height: 32px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--td-radius-small, 6px);
   background: var(--td-bg-color-secondarycontainer);
   color: var(--td-text-color-secondary);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition-property: background-color, color;
+  transition-duration: 200ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 
   &:hover {
     background: var(--td-bg-color-secondarycontainer);
@@ -3010,10 +3036,14 @@ const handleUploadFinishedEvent = (event: Event) => {
 // 右侧滑入动画
 .shared-detail-drawer-enter-active,
 .shared-detail-drawer-leave-active {
-  transition: opacity 0.25s ease;
+  transition-property: opacity;
+  transition-duration: 250ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 
   .shared-detail-drawer {
-    transition: transform 0.25s ease;
+    transition-property: transform;
+    transition-duration: 250ms;
+    transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
   }
 }
 

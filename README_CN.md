@@ -98,6 +98,20 @@
 
 从文档解析、向量化、检索到大模型推理，全流程模块化解耦，组件可灵活替换与扩展。支持本地 / 私有云部署，数据完全自主可控，零门槛 Web UI 快速上手。
 
+### 📊 架构深度分析
+
+完整的 7 维度架构深度分析报告请查阅 [`docs/architecture_deep_analysis.md`](./docs/architecture_deep_analysis.md)：
+
+| 维度 | 评分 | 关键结论 |
+|------|------|---------|
+| 权限系统 | 5.5/10 | RBAC 模型完整但耦合严重（约 12k 行 / 25+ 文件），UUM 接入需 6 阶段改造 |
+| 多模态解析 | 8/10 | 7 引擎注册表 + VLM 管线；docreader 是轻量 facade |
+| Wiki QA 链路 | 7.7/10 | 工业级 2-pass LLM 编译 + Map-Reduce；无独立 Wiki QA 模式 |
+| ReAct 智能体 | 8/10 | 完整 think→analyze→act→observe 循环；24 个工具（22 内置 + 2 Web）；Anthropic 不支持工具调用 |
+| 联网搜索 | 6.8/10 | 7 个搜索引擎 + 多层 SSRF 防护；无限流和跨会话缓存 |
+| Deep Research | 3.9/10 | 仅预留 ID 常量；无编排服务 |
+| Notebook Studio | 6.0/10 | 前端壳完整（可见 14 项工具）；后端零实现 |
+
 ## 🧩 功能概览
 
 **智能对话**

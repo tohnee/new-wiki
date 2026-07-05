@@ -34,7 +34,7 @@ export function useStartChat() {
     }
 
     menuStore.setPrefillQuery(q)
-    router.push('/platform/creatChat')
+    router.push('/platform/notebook')
   }
 
   return { startChat }

@@ -490,8 +490,8 @@ onUnmounted(() => {
   height: 780px;
   max-height: calc(100vh - 40px);
   background: var(--td-bg-color-container);
-  border-radius: 12px;
-  box-shadow: 0 6px 28px rgba(15, 23, 42, 0.08);
+  border-radius: var(--td-radius-large, 12px);
+  box-shadow: var(--td-shadow-card-hover, 0 6px 28px rgba(15, 23, 42, 0.08));
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -508,16 +508,22 @@ onUnmounted(() => {
   background: transparent;
   color: var(--td-text-color-secondary);
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: var(--td-radius-default, 6px);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  transition-property: background-color, color, transform;
+  transition-duration: 200ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
   z-index: 10;
 
   &:hover {
-    background: var(--td-bg-color-container-hover);
-    color: var(--td-text-color-primary);
+    background: var(--brand-color-with-opacity, rgba(0, 113, 227, 0.08));
+    color: var(--td-brand-color);
+  }
+
+  &:active {
+    transform: scale(0.92);
   }
 }
 
@@ -572,12 +578,15 @@ onUnmounted(() => {
   align-items: center;
   padding: 6px 12px;
   margin-bottom: 2px;
-  border-radius: 6px;
+  border-radius: var(--td-radius-default, 6px);
   cursor: pointer;
   color: var(--td-text-color-primary);
   font-size: 14px;
-  transition: all 0.2s ease;
+  transition-property: background-color, color, box-shadow;
+  transition-duration: 200ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
   user-select: none;
+  position: relative;
 
   &:hover {
     background-color: var(--td-bg-color-container-hover);
@@ -585,9 +594,10 @@ onUnmounted(() => {
   }
 
   &.active {
-    background-color: var(--td-bg-color-secondarycontainer);
+    background-color: var(--brand-color-with-opacity, rgba(0, 113, 227, 0.08));
     color: var(--td-brand-color);
     font-weight: 500;
+    box-shadow: inset 2px 0 0 var(--td-brand-color);
   }
 }
 
@@ -621,12 +631,15 @@ onUnmounted(() => {
 .submenu-item {
   padding: 5px 12px;
   margin-bottom: 2px;
-  border-radius: 4px;
+  border-radius: var(--td-radius-small, 4px);
   cursor: pointer;
   color: var(--td-text-color-primary);
   font-size: 13px;
-  transition: all 0.2s ease;
+  transition-property: background-color, color, box-shadow;
+  transition-duration: 200ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
   user-select: none;
+  position: relative;
 
   &:hover {
     background-color: var(--td-bg-color-container-hover);
@@ -634,9 +647,10 @@ onUnmounted(() => {
   }
 
   &.active {
-    background-color: var(--td-bg-color-secondarycontainer);
+    background-color: var(--brand-color-with-opacity, rgba(0, 113, 227, 0.08));
     color: var(--td-brand-color);
     font-weight: 500;
+    box-shadow: inset 2px 0 0 var(--td-brand-color);
   }
 }
 
@@ -647,7 +661,9 @@ onUnmounted(() => {
 /* 子菜单动画 */
 .submenu-enter-active,
 .submenu-leave-active {
-  transition: all 0.2s ease;
+  transition-property: opacity, max-height;
+  transition-duration: 200ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 .submenu-enter-from {
@@ -722,12 +738,16 @@ onUnmounted(() => {
 /* 弹窗动画 */
 .modal-enter-active,
 .modal-leave-active {
-  transition: opacity 0.2s ease;
+  transition-property: opacity;
+  transition-duration: 200ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 .modal-enter-active .settings-modal,
 .modal-leave-active .settings-modal {
-  transition: transform 0.2s ease, opacity 0.2s ease;
+  transition-property: transform, opacity;
+  transition-duration: 250ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 .modal-enter-from,
@@ -753,7 +773,7 @@ onUnmounted(() => {
 
 .settings-nav::-webkit-scrollbar-thumb {
   background: var(--td-gray-color-5);
-  border-radius: 3px;
+  border-radius: var(--td-radius-small, 3px);
 }
 
 .settings-nav::-webkit-scrollbar-thumb:hover {
@@ -766,7 +786,7 @@ onUnmounted(() => {
 
 .settings-content::-webkit-scrollbar-thumb {
   background: var(--td-gray-color-5);
-  border-radius: 3px;
+  border-radius: var(--td-radius-small, 3px);
 }
 
 .settings-content::-webkit-scrollbar-thumb:hover {

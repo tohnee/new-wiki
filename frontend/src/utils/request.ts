@@ -3,6 +3,7 @@ import axios from "axios";
 import { generateRandomString, MAX_FILE_SIZE_MB } from "./index";
 import i18n from '@/i18n'
 import { getApiBaseUrl } from './api-base';
+import { getAppRouter } from '@/router';
 
 const t = (key: string) => i18n.global.t(key)
 
@@ -101,12 +102,38 @@ function isEmbedPage(): boolean {
   return window.location.pathname.startsWith('/embed/');
 }
 
+/**
+ * 重定向到登录页。
+ *
+ * P0-3 修复：原实现用 window.location.href = '/login' 整页刷新，会丢失所有
+ * Pinia 状态、未保存的输入框内容、未完成的 Studio job。改用 router.push
+ * 保留 SPA 状态，并附 redirect 查询参数支持登录后回跳到原页面。
+ *
+ * 若 router 不可用（极早期初始化阶段或 SSR），降级到 location.href 避免卡死。
+ */
 function redirectToLogin() {
   if (typeof window === 'undefined') return;
   if (window.location.pathname === '/login') return;
   // Embed 渠道用 Embed token 鉴权，匿名访问不应被踢到登录页
   if (isEmbedPage()) return;
-  window.location.href = '/login';
+
+  const currentPath = window.location.pathname + window.location.search + window.location.hash;
+  const router = getAppRouter();
+  if (router) {
+    router.push({
+      path: '/login',
+      query: currentPath && currentPath !== '/login' ? { redirect: currentPath } : {},
+    }).catch(() => {
+      // router.push 可能因导航守卫 reject（例如已经在跳转中），降级到 location
+      // 但仅在确实没跳走时才降级，避免循环
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    });
+  } else {
+    // router 实例尚未注入（极早期），降级到整页跳转
+    window.location.href = '/login';
+  }
 }
 
 instance.interceptors.response.use(

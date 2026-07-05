@@ -4,9 +4,19 @@
       <!-- 顶部标题 -->
       <div class="panel-header">
         <span class="panel-title">来源</span>
-        <button class="panel-icon-btn" title="收起面板" @click="$emit('toggle')">
-          <t-icon name="chevron-left" size="16px" />
-        </button>
+        <div class="panel-header-actions">
+          <button
+            class="panel-icon-btn"
+            :title="loading ? '加载中...' : '刷新来源列表'"
+            :disabled="loading"
+            @click="loadKnowledgeBases"
+          >
+            <t-icon :name="loading ? 'loading' : 'refresh'" size="16px" />
+          </button>
+          <button class="panel-icon-btn" title="收起面板" @click="$emit('toggle')">
+            <t-icon name="chevron-left" size="16px" />
+          </button>
+        </div>
       </div>
 
       <!-- 搜索框 -->
@@ -73,6 +83,13 @@
                 @change="(val: boolean) => selectGroup(group, val)"
                 @click.stop
               />
+              <button
+                class="group-delete-btn"
+                title="删除该知识库"
+                @click.stop="handleDeleteKB(group)"
+              >
+                <t-icon name="delete" size="14px" />
+              </button>
             </div>
 
             <transition name="group-expand">
@@ -102,12 +119,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { listKnowledgeBases } from '@/api/knowledge-base'
+import { listKnowledgeBases, deleteKnowledgeBase } from '@/api/knowledge-base'
 import { useRouter } from 'vue-router'
+import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
 import { useUIStore } from '@/stores/ui'
 import { useSettingsStore } from '@/stores/settings'
 import { useNotebookStore } from '@/stores/notebook'
-import type { KnowledgeBaseInfo } from '@/types/knowledgeProcess'
+import type { KnowledgeBaseInfo } from '@/api/auth'
+import type { SourceItem, SourceGroup } from '@/types/notebook'
 
 defineProps<{
   collapsed: boolean
@@ -117,7 +136,7 @@ defineEmits<{
   (e: 'toggle'): void
 }>()
 
-const router = useRouter()
+const router = useRouter() // eslint-disable-line @typescript-eslint/no-unused-vars
 const uiStore = useUIStore()
 const settingsStore = useSettingsStore()
 const notebookStore = useNotebookStore()
@@ -125,22 +144,7 @@ const notebookStore = useNotebookStore()
 const loading = ref(true)
 const searchQuery = ref('')
 
-interface SourceItem {
-  id: string
-  name: string
-  type: 'file' | 'note'
-  selected: boolean
-}
-
-interface SourceGroup {
-  id: string
-  name: string
-  type: 'knowledge_base'
-  expanded: boolean
-  visible: boolean
-  items: SourceItem[]
-}
-
+// 本地知识库分组（仅 knowledge_bases，web_sources 由 store 管理）
 const sourceGroups = ref<SourceGroup[]>([])
 
 // 加载知识库列表
@@ -148,7 +152,8 @@ const loadKnowledgeBases = async () => {
   loading.value = true
   try {
     const res = await listKnowledgeBases({ creator: 'all' })
-    const kbs: KnowledgeBaseInfo[] = res?.data || []
+    // API 返回的 KB 带有 knowledge 文件数组（KnowledgeBaseInfo 类型未覆盖此字段）
+    const kbs = (res?.data || []) as Array<KnowledgeBaseInfo & { knowledge?: Array<{ id: string; name?: string; title?: string }> }>
 
     sourceGroups.value = kbs.map((kb) => ({
       id: kb.id,
@@ -156,10 +161,10 @@ const loadKnowledgeBases = async () => {
       type: 'knowledge_base' as const,
       expanded: true,
       visible: true,
-      items: (kb.knowledge || []).map((file: any) => ({
+      items: (kb.knowledge || []).map((file) => ({
         id: file.id,
         name: file.name || file.title || '未命名',
-        type: 'file' as const,
+        type: 'document' as const,
         selected: false,
       })),
     }))
@@ -218,7 +223,15 @@ const selectGroup = (group: SourceGroup, val: boolean) => {
 }
 
 // 切换单个选择
-const toggleItem = (_groupId: string, _itemId: string, _val: boolean) => {
+// 修复 P0-7：原实现完全忽略 groupId/itemId/val 三个参数，只调用 syncToSettings，
+// 导致 checkbox 的 @change 事件传过来的新选中状态从未写回到 item.selected，
+// 用户点击 checkbox 后视觉无变化、settings store 也读不到任何已选文件。
+const toggleItem = (groupId: string, itemId: string, val: boolean) => {
+  const group = sourceGroups.value.find((g) => g.id === groupId)
+  if (!group) return
+  const item = group.items.find((i) => i.id === itemId)
+  if (!item) return
+  item.selected = val
   syncToSettings()
 }
 
@@ -259,17 +272,49 @@ const getFileIcon = (name: string): string => {
 
 // 添加来源（打开知识库编辑器）
 const handleAddSource = () => {
-  uiStore.openKBEditor('create')
+  uiStore.openCreateKB('document')
 }
 
-// 同步到 notebookStore 的 sourceGroups
+// 删除知识库（带确认对话框）
+const handleDeleteKB = (group: SourceGroup) => {
+  const dialog = DialogPlugin.confirm({
+    header: '删除知识库',
+    body: `确定要删除知识库「${group.name}」吗？该操作不可恢复，知识库内的所有文件都将被删除。`,
+    confirmBtn: { content: '删除', theme: 'danger' },
+    cancelBtn: '取消',
+    theme: 'warning',
+    onConfirm: async () => {
+      try {
+        await deleteKnowledgeBase(group.id)
+        // 从本地列表中移除
+        sourceGroups.value = sourceGroups.value.filter((g) => g.id !== group.id)
+        // 同步选择状态
+        syncToSettings()
+        MessagePlugin.success(`已删除知识库「${group.name}」`)
+      } catch (err) {
+        console.error('[SourcePanel] Failed to delete knowledge base:', err)
+        MessagePlugin.error('删除知识库失败，请重试')
+      } finally {
+        dialog.hide()
+      }
+    },
+  })
+}
+
+// 同步本地知识库分组到 notebookStore，保留 store 中的 web_sources 分组
 watch(sourceGroups, (groups) => {
-  notebookStore.sourceGroups = groups.map((g) => ({
-    id: g.id,
-    name: g.name,
-    type: g.type,
-    items: g.items.map((i) => ({ ...i })),
-  }))
+  const webSourcesGroup = notebookStore.sourceGroups.find((g) => g.id === 'web_sources')
+  notebookStore.sourceGroups = [
+    ...groups.map((g) => ({
+      id: g.id,
+      name: g.name,
+      type: g.type,
+      expanded: g.expanded,
+      visible: g.visible,
+      items: g.items.map((i) => ({ ...i })),
+    })),
+    ...(webSourcesGroup ? [webSourcesGroup] : []),
+  ]
 }, { deep: true, immediate: true })
 
 onMounted(() => {
@@ -290,80 +335,113 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px 8px;
+  padding: 16px 20px 12px;
   flex-shrink: 0;
+}
+
+.panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .panel-title {
   font-size: 15px;
   font-weight: 600;
   color: var(--td-text-color-primary);
+  letter-spacing: -0.01em;
+  /* NotebookLM 风格：标题优化换行 */
+  text-wrap: balance;
 }
 
 .panel-icon-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border: none;
   background: transparent;
   color: var(--td-text-color-secondary);
-  border-radius: 6px;
+  border-radius: var(--td-radius-default, 6px);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition-property: background-color, color, transform;
+  transition-duration: var(--duration-fast, 150ms);
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 
   &:hover {
-    background: var(--td-bg-color-container-hover);
-    color: var(--td-text-color-primary);
+    background: var(--brand-color-with-opacity, rgba(0, 113, 227, 0.08));
+    color: var(--td-brand-color);
+  }
+
+  &:active {
+    transform: scale(0.92);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+    transform: none;
   }
 }
 
 .search-row {
-  padding: 0 12px 8px;
+  padding: 0 16px 10px;
   flex-shrink: 0;
 }
 
 .source-search :deep(.t-input__wrap) {
-  border-radius: 8px;
+  border-radius: var(--td-radius-medium, 8px);
 }
 
 .add-source-row {
-  padding: 0 12px 8px;
+  padding: 0 16px 12px;
   flex-shrink: 0;
 }
 
+/* NotebookLM 风格：添加来源按钮做成虚线胶囊 */
 .add-source-btn {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   width: 100%;
-  padding: 7px 12px;
-  border: 1px dashed var(--td-component-border);
-  background: transparent;
+  padding: 9px 12px;
+  border: 1px dashed var(--brand-color-border, rgba(0, 113, 227, 0.32));
+  background: var(--brand-color-with-opacity, rgba(0, 113, 227, 0.08));
   color: var(--td-brand-color);
-  border-radius: 8px;
+  border-radius: var(--td-radius-medium, 8px);
   font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition-property: background-color, border-color, transform, box-shadow;
+  transition-duration: var(--duration-fast, 150ms);
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 
   &:hover {
-    background: var(--td-brand-color-light);
+    background: rgba(0, 113, 227, 0.14);
     border-color: var(--td-brand-color);
+    border-style: solid;
+  }
+
+  &:active {
+    transform: scale(0.98);
   }
 }
 
 .source-count-info {
-  padding: 0 16px 8px;
+  padding: 0 20px 8px;
   font-size: 11px;
   color: var(--td-text-color-placeholder);
   flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
 }
 
 .source-list {
   flex: 1;
   overflow-y: auto;
-  padding: 0 8px 16px;
+  padding: 0 12px 16px;
   min-height: 0;
 
   &::-webkit-scrollbar {
@@ -372,7 +450,8 @@ onMounted(() => {
   &::-webkit-scrollbar-thumb {
     background: transparent;
     border-radius: 3px;
-    transition: background 0.2s;
+    transition-property: background;
+    transition-duration: var(--duration-base, 220ms);
   }
   &:hover::-webkit-scrollbar-thumb {
     background: var(--td-scrollbar-color, rgba(0,0,0,0.15));
@@ -387,7 +466,7 @@ onMounted(() => {
 }
 
 .source-item-skeleton {
-  padding: 8px 12px;
+  padding: 10px 12px;
 }
 
 .source-empty {
@@ -395,39 +474,48 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px;
+  padding: 56px 24px 40px;
   text-align: center;
 }
 
 .empty-icon {
   color: var(--td-text-color-placeholder);
-  margin-bottom: 12px;
+  margin-bottom: 14px;
+  opacity: 0.6;
 }
 
 .empty-text {
   font-size: 14px;
+  font-weight: 500;
   color: var(--td-text-color-secondary);
-  margin: 0 0 4px;
+  margin: 0 0 6px;
+  text-wrap: balance;
 }
 
 .empty-hint {
   font-size: 12px;
   color: var(--td-text-color-placeholder);
   margin: 0;
+  text-wrap: pretty;
+  max-width: 220px;
+  line-height: 1.5;
 }
 
 .source-group {
-  margin-bottom: 2px;
+  margin-bottom: 4px;
 }
 
+/* NotebookLM 风格：分组头做成可点击的胶囊 */
 .group-header {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 12px;
-  border-radius: 6px;
+  padding: 8px 10px;
+  border-radius: var(--td-radius-default, 6px);
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition-property: background-color;
+  transition-duration: var(--duration-fast, 150ms);
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 
   &:hover {
     background: var(--td-bg-color-container-hover);
@@ -437,7 +525,9 @@ onMounted(() => {
 .group-caret {
   color: var(--td-text-color-placeholder);
   flex-shrink: 0;
-  transition: transform 0.15s ease;
+  transition-property: transform;
+  transition-duration: var(--duration-fast, 150ms);
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 .group-icon {
@@ -448,20 +538,23 @@ onMounted(() => {
 .group-name {
   flex: 1;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--td-text-color-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  letter-spacing: -0.005em;
 }
 
 .group-count {
   font-size: 11px;
-  color: var(--td-text-color-placeholder);
+  color: var(--td-text-color-secondary);
   background: var(--td-bg-color-secondarycontainer);
-  padding: 1px 6px;
+  padding: 2px 8px;
   border-radius: 10px;
   flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
 }
 
 .group-checkbox {
@@ -471,9 +564,42 @@ onMounted(() => {
   }
 }
 
+.group-delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--td-text-color-placeholder);
+  border-radius: var(--td-radius-small, 4px);
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0;
+  transition-property: background-color, color, opacity, transform;
+  transition-duration: var(--duration-fast, 150ms);
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
+
+  &:hover {
+    background: var(--td-error-color-light);
+    color: var(--td-error-color);
+  }
+
+  &:active {
+    transform: scale(0.92);
+  }
+}
+
+.group-header:hover .group-delete-btn {
+  opacity: 1;
+}
+
 .group-expand-enter-active,
 .group-expand-leave-active {
-  transition: all 0.2s ease;
+  transition-property: opacity, max-height, transform;
+  transition-duration: var(--duration-base, 220ms);
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
   overflow: hidden;
 }
 
@@ -481,33 +607,46 @@ onMounted(() => {
 .group-expand-leave-to {
   opacity: 0;
   max-height: 0;
+  transform: translateY(-4px);
 }
 
 .group-expand-enter-to,
 .group-expand-leave-from {
   opacity: 1;
   max-height: 500px;
+  transform: translateY(0);
 }
 
 .group-items {
-  padding-left: 20px;
+  padding-left: 18px;
+  padding-top: 2px;
+  padding-bottom: 4px;
 }
 
+/* NotebookLM 风格：来源项做成柔和卡片感 */
 .source-item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 10px;
-  border-radius: 6px;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: var(--td-radius-default, 6px);
   cursor: pointer;
-  transition: background 0.12s ease;
+  transition-property: background-color, transform;
+  transition-duration: var(--duration-fast, 150ms);
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 
   &:hover {
     background: var(--td-bg-color-container-hover);
   }
 
+  &:active {
+    transform: scale(0.99);
+  }
+
   &.item-selected {
-    background: var(--td-brand-color-light);
+    background: var(--brand-color-with-opacity, rgba(0, 113, 227, 0.08));
+    /* 选中态左侧加品牌色细条，强化视觉反馈 */
+    box-shadow: inset 2px 0 0 var(--td-brand-color);
   }
 
   &.item-filtered {
@@ -525,18 +664,27 @@ onMounted(() => {
 .item-icon {
   color: var(--td-text-color-secondary);
   flex-shrink: 0;
+  transition-property: color;
+  transition-duration: var(--duration-fast, 150ms);
+
+  .item-selected & {
+    color: var(--td-brand-color);
+  }
 }
 
 .item-name {
   flex: 1;
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--td-text-color-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition-property: color;
+  transition-duration: var(--duration-fast, 150ms);
 
   .item-selected & {
     color: var(--td-text-color-primary);
+    font-weight: 500;
   }
 }
 </style>

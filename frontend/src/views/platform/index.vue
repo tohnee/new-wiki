@@ -77,7 +77,7 @@ const getCurrentKbId = (): string | null => {
     return (route.params as any)?.kbId as string || null
 }
 
-const CHAT_DROP_ROUTE_NAMES = new Set(['chat', 'globalCreatChat', 'kbCreatChat']);
+const CHAT_DROP_ROUTE_NAMES = new Set(['chat', 'notebook']);
 
 const isChatDropRoute = () => {
     return CHAT_DROP_ROUTE_NAMES.has(String(route.name || ''));
@@ -263,8 +263,8 @@ onUnmounted(() => {
     height: 100%;
     min-width: 600px;
     min-height: 0;
-    /* 统一整页背景，让左侧菜单与右侧内容区视觉连贯 */
-    background: var(--td-bg-color-container);
+    /* NotebookLM 风格：浅灰背景，让白色侧栏与内容区卡片浮起 */
+    background: var(--td-bg-color-page);
 }
 
 /* 右侧路由区：占满剩余宽度与整列高度，并把 min-height:0 传给子页面以便内部 flex 滚动 */
@@ -278,7 +278,9 @@ onUnmounted(() => {
 }
 
 .upload-mask {
-    background-color: rgba(255, 255, 255, 0.8);
+    background-color: var(--glass-bg-strong, rgba(255, 255, 255, 0.88));
+    backdrop-filter: blur(var(--glass-blur, 20px)) saturate(var(--glass-saturate, 180%));
+    -webkit-backdrop-filter: blur(var(--glass-blur, 20px)) saturate(var(--glass-saturate, 180%));
     position: fixed;
     width: 100%;
     height: 100%;

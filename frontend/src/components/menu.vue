@@ -85,7 +85,7 @@
                         <div class="menu_item-box">
                             <div class="menu_icon">
                                 <img class="icon"
-                                    :src="getImgSrc(item.icon == 'zhishiku' ? knowledgeIcon : item.icon == 'agent' ? agentIcon : item.icon == 'integration' ? integrationIcon : item.icon == 'organization' ? organizationIcon : item.icon == 'logout' ? logoutIcon : item.icon == 'setting' ? settingIcon : item.icon == 'notebook' ? notebookIcon : prefixIcon)"
+                                    :src="getImgSrc(item.icon == 'zhishiku' ? knowledgeIcon : item.icon == 'agent' ? agentIcon : item.icon == 'integration' ? integrationIcon : item.icon == 'organization' ? organizationIcon : item.icon == 'logout' ? logoutIcon : item.icon == 'setting' ? settingIcon : item.icon == 'notebook' ? notebookIcon : 'prefixIcon.svg')"
                                     alt="">
                             </div>
                             <template v-if="!uiStore.sidebarCollapsed">
@@ -378,18 +378,12 @@ const canAccessAllTenants = computed(() => authStore.canAccessAllTenants);
 // 是否处于知识库详情页（不包括全局聊天）
 const isInKnowledgeBase = computed<boolean>(() => {
     return route.name === 'knowledgeBaseDetail' ||
-        route.name === 'kbCreatChat' ||
         route.name === 'knowledgeBaseSettings';
 });
 
 // 是否在知识库列表页面
 const isInKnowledgeBaseList = computed<boolean>(() => {
     return route.name === 'knowledgeBaseList';
-});
-
-// 是否在创建聊天页面
-const isInCreatChat = computed<boolean>(() => {
-    return route.name === 'globalCreatChat' || route.name === 'kbCreatChat';
 });
 
 // 是否在对话详情页
@@ -416,8 +410,8 @@ const isMenuItemActive = (itemPath: string): boolean => {
             return currentRoute === 'integrations';
         case 'organizations':
             return currentRoute === 'organizationList';
-        case 'creatChat':
-            return currentRoute === 'kbCreatChat' || currentRoute === 'globalCreatChat';
+        case 'notebook':
+            return currentRoute === 'notebook';
         case 'settings':
             return currentRoute === 'settings';
         default:
@@ -435,7 +429,6 @@ const getIconActiveState = (itemPath: string) => {
             currentRoute === 'knowledgeBaseDetail' ||
             currentRoute === 'knowledgeBaseSettings'
         ),
-        isCreatChatActive: itemPath === 'creatChat' && (currentRoute === 'kbCreatChat' || currentRoute === 'globalCreatChat'),
         isSettingsActive: itemPath === 'settings' && currentRoute === 'settings',
         isChatActive: itemPath === 'chat' && currentRoute === 'chat',
         isAgentsActive: currentRoute === 'agentList',
@@ -446,13 +439,13 @@ const getIconActiveState = (itemPath: string) => {
 // 分离上下两部分菜单（使用 visibleMenuArr 以便 lite 模式过滤 logout）
 const topMenuItems = computed<MenuItem[]>(() => {
     return (visibleMenuArr.value as unknown as MenuItem[]).filter((item: MenuItem) =>
-        item.path === 'knowledge-bases' || item.path === 'agents' || item.path === 'integrations' || item.path === 'organizations' || item.path === 'creatChat'
+        item.path === 'knowledge-bases' || item.path === 'agents' || item.path === 'integrations' || item.path === 'organizations' || item.path === 'notebook'
     );
 });
 
 const bottomMenuItems = computed<MenuItem[]>(() => {
     return (visibleMenuArr.value as unknown as MenuItem[]).filter((item: MenuItem) => {
-        if (item.path === 'knowledge-bases' || item.path === 'agents' || item.path === 'integrations' || item.path === 'organizations' || item.path === 'creatChat') {
+        if (item.path === 'knowledge-bases' || item.path === 'agents' || item.path === 'integrations' || item.path === 'organizations' || item.path === 'notebook') {
             return false;
         }
         return true;
@@ -591,7 +584,7 @@ const handleInlineBatchDelete = () => {
                     }
                     const currentChatId = route.params.chatid as string;
                     if (currentChatId && (isDeleteAll || batchSelectedIds.value.includes(currentChatId))) {
-                        router.push('/platform/creatChat');
+                        router.push('/platform/notebook');
                     }
                     batchSelectedIds.value = []
                     MessagePlugin.success(t('batchManage.deleteSuccess'))
@@ -703,7 +696,7 @@ const delCard = (item: any) => {
             syncMenuStoreFromBuckets();
 
             if (item.id == route.params.chatid) {
-                router.push('/platform/creatChat');
+                router.push('/platform/notebook');
             }
         } else {
             MessagePlugin.error(t('chat.deleteSessionFailed'));
@@ -1013,7 +1006,7 @@ watch([() => route.name, () => route.params], (newvalue, oldvalue) => {
         currentSecondpath.value = "";
     }
 
-    // 创建新会话时 creatChat 会先 updataMenuChildren，再跳转 chat/:id。
+    // 创建新会话时 notebook 会先 updataMenuChildren，再跳转 chat/:id。
     // 侧栏实际渲染 sessionBuckets，需按 buckets 判断是否缺失，不能把 menuStore 当真相来源。
     const newChatId = (newvalue[1] as any)?.chatid as string | undefined;
     if (nameStr === 'chat' && newChatId) {
@@ -1030,7 +1023,6 @@ watch([() => route.name, () => route.params], (newvalue, oldvalue) => {
     }
 });
 let knowledgeIcon = ref('zhishiku-green.svg');
-let prefixIcon = ref('prefixIcon.svg');
 let logoutIcon = ref('logout.svg');
 let settingIcon = ref('setting.svg');
 let agentIcon = ref('agent.svg');
@@ -1041,7 +1033,6 @@ let pathPrefix = ref(route.name)
 const getIcon = (path: string) => {
     // 根据当前路由状态更新所有图标
     const kbActiveState = getIconActiveState('knowledge-bases');
-    const creatChatActiveState = getIconActiveState('creatChat');
     const settingsActiveState = getIconActiveState('settings');
     const agentsActiveState = route.name === 'agentList';
     const integrationsActiveState = route.name === 'integrations';
@@ -1058,9 +1049,6 @@ const getIcon = (path: string) => {
     // 组织图标：只在组织页面显示绿色
     organizationIcon.value = organizationsActiveState ? 'organization-green.svg' : 'organization.svg';
 
-    // 对话图标：只在对话创建页面显示绿色，其他情况显示默认
-    prefixIcon.value = creatChatActiveState.isCreatChatActive ? 'prefixIcon-green.svg' : 'prefixIcon.svg';
-
     // 设置图标：只在设置页面显示绿色
     settingIcon.value = settingsActiveState.isSettingsActive ? 'setting-green.svg' : 'setting.svg';
 
@@ -1073,6 +1061,7 @@ const getIcon = (path: string) => {
 }
 getIcon(typeof route.name === 'string' ? route.name as string : (route.name ? String(route.name) : ''))
 const handleMenuClick = async (path: string) => {
+    console.log('[Sidebar] menu click:', path)
     if (path === 'knowledge-bases') {
         // 知识库菜单项：如果在知识库内部，跳转到当前知识库文件页；否则跳转到知识库列表
         const kbId = await getCurrentKbId()
@@ -1130,17 +1119,7 @@ const gotopage = async (path: string) => {
         router.push('/login');
         return;
     } else {
-        if (path === 'creatChat') {
-            // 如果在知识库详情页，跳转到全局对话创建页
-            if (isInKnowledgeBase.value) {
-                router.push('/platform/creatChat')
-            } else {
-                // 如果不在知识库内，进入对话创建页
-                router.push(`/platform/creatChat`)
-            }
-        } else {
-            router.push(`/platform/${path}`);
-        }
+        router.push(`/platform/${path}`);
     }
     getIcon(path)
 }
@@ -1200,7 +1179,9 @@ const onDragHandleMouseDown = (e: MouseEvent) => {
     flex-direction: column;
     border-right: 1px solid var(--td-component-stroke);
     box-shadow: 1px 0 0 rgba(0, 0, 0, 0.02);
-    transition: width 0.25s ease, min-width 0.25s ease;
+    transition-property: width, min-width;
+    transition-duration: var(--duration-base, 220ms);
+    transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
     position: relative;
 
     // macOS Wails 桌面：红绿灯位于 HiddenInset 标题栏区域，需让出顶部空间
@@ -1242,7 +1223,7 @@ const onDragHandleMouseDown = (e: MouseEvent) => {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        height: 50px;
+        height: 64px;
         flex-shrink: 0;
         padding: 0 10px 0 var(--sidebar-inset-x);
     }
@@ -1288,7 +1269,7 @@ const onDragHandleMouseDown = (e: MouseEvent) => {
         overflow: hidden;
 
         .logo {
-            width: 128px;
+            width: 148px;
             height: auto;
         }
 
@@ -1411,8 +1392,8 @@ const onDragHandleMouseDown = (e: MouseEvent) => {
     }
 
     .menu_item_active {
-        border-radius: 4px;
-        background: var(--td-bg-color-secondarycontainer) !important;
+        border-radius: var(--td-radius-default, 6px);
+        background: var(--brand-color-with-opacity, rgba(0, 113, 227, 0.08)) !important;
 
         .menu_icon,
         .menu_title {
@@ -1443,8 +1424,10 @@ const onDragHandleMouseDown = (e: MouseEvent) => {
         padding: 8px 10px 8px var(--sidebar-inset-x);
         box-sizing: border-box;
         margin-bottom: 2px;
-        border-radius: 4px;
-        transition: background-color 0.2s ease;
+        border-radius: var(--td-radius-default, 6px);
+        transition-property: background-color;
+        transition-duration: var(--duration-fast, 150ms);
+        transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 
         .menu_item-box {
             display: flex;
@@ -1452,7 +1435,7 @@ const onDragHandleMouseDown = (e: MouseEvent) => {
         }
 
         &:hover {
-            border-radius: 4px;
+            border-radius: var(--td-radius-default, 6px);
             background: var(--td-bg-color-container-hover);
 
             .menu_icon,
@@ -1666,7 +1649,7 @@ const onDragHandleMouseDown = (e: MouseEvent) => {
         }
 
         &.session-chat-row--selected .session-list-row {
-            background: rgba(7, 192, 95, 0.05);
+            background: var(--brand-color-with-opacity, rgba(0, 113, 227, 0.08));
         }
     }
 

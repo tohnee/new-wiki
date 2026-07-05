@@ -1,7 +1,7 @@
 import { createApp } from "vue";
 import { createPinia } from "pinia";
 import App from "./App.vue";
-import router from "./router";
+import router, { setRouterInstance } from "./router";
 import "./assets/fonts.css";
 import TDesign from "tdesign-vue-next";
 // 引入组件库的少量全局样式变量
@@ -31,6 +31,14 @@ app.use(TDesign);
 app.use(createPinia());
 app.use(router);
 app.use(i18n);
+
+// P0-3：把 router 实例注入到 router 模块，供非组件场景（axios 401 拦截器）使用
+setRouterInstance(router);
+
+// 全局错误处理：未捕获的 Promise 异常不再静默丢失
+app.config.errorHandler = (err, instance, info) => {
+  console.error('[Vue errorHandler]', info, err)
+}
 
 // 等首屏路由（含导航守卫、Lite 自动登录）完成后再挂载，避免先闪默认页再跳转
 router.isReady().finally(() => {

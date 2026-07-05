@@ -337,7 +337,7 @@ class MarkdownImageUtil:
             img_b64 = match.group(3)  # Base64 encoded data
 
             # Decode base64 string to bytes
-            image_byte = endecode.encode_image(img_b64, errors="ignore")
+            image_byte = endecode.decode_image_from_base64(img_b64, errors="ignore")
             if not image_byte:
                 logger.error(f"Failed to decode base64 image skip it: {img_b64}")
                 return title  # Return just the alt text if decode fails

@@ -873,7 +873,7 @@ onMounted(async () => {
     messagesList.splice(0);
 
     // 注册 Studio 面板的 prompt 发送回调
-    notebookStore.registerSendPrompt((prompt: string) => {
+    notebookStore.registerSendPrompt((prompt) => {
         if (inputFieldRef.value?.triggerSend) {
             inputFieldRef.value.triggerSend(prompt);
         }
@@ -952,8 +952,10 @@ onBeforeRouteUpdate((to, from, next) => {
 .nb-panel-left {
     flex-shrink: 0;
     border-right: 1px solid var(--td-component-stroke);
-    transition: width 0.2s ease;
-    background: var(--td-bg-color-container);
+    transition-property: width;
+    transition-duration: 250ms;
+    transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
+    background: var(--td-bg-color-page);
     position: relative;
     z-index: 2;
 }
@@ -967,8 +969,10 @@ onBeforeRouteUpdate((to, from, next) => {
 .nb-panel-right {
     flex-shrink: 0;
     border-left: 1px solid var(--td-component-stroke);
-    transition: width 0.2s ease;
-    background: var(--td-bg-color-container);
+    transition-property: width;
+    transition-duration: 250ms;
+    transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
+    background: var(--td-bg-color-page);
     position: relative;
     z-index: 2;
 }
@@ -979,7 +983,7 @@ onBeforeRouteUpdate((to, from, next) => {
     align-items: flex-start;
     justify-content: center;
     padding-top: 12px;
-    background: var(--td-bg-color-container);
+    background: var(--td-bg-color-page);
 }
 .nb-collapsed-left {
     border-right: 1px solid var(--td-component-stroke);
@@ -996,12 +1000,17 @@ onBeforeRouteUpdate((to, from, next) => {
     border: none;
     background: var(--td-bg-color-secondarycontainer);
     color: var(--td-text-color-secondary);
-    border-radius: 6px;
+    border-radius: var(--td-radius-small, 6px);
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition-property: background-color, color, transform;
+    transition-duration: 150ms;
+    transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
     &:hover {
-        background: var(--td-brand-color-light);
+        background: var(--brand-color-with-opacity, rgba(0, 113, 227, 0.08));
         color: var(--td-brand-color);
+    }
+    &:active {
+        transform: scale(0.92);
     }
     &.nb-studio-expand {
         color: var(--td-brand-color);
@@ -1014,7 +1023,9 @@ onBeforeRouteUpdate((to, from, next) => {
     position: relative;
     background: transparent;
     z-index: 5;
-    transition: background 0.15s ease;
+    transition-property: background-color;
+    transition-duration: 150ms;
+    transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
     &::after {
         content: '';
         position: absolute;
@@ -1023,7 +1034,9 @@ onBeforeRouteUpdate((to, from, next) => {
         width: 2px;
         height: 100%;
         background: transparent;
-        transition: background 0.15s ease;
+        transition-property: background-color;
+        transition-duration: 150ms;
+        transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
     }
     &:hover::after, &:active::after {
         background: var(--td-brand-color);
@@ -1033,7 +1046,9 @@ onBeforeRouteUpdate((to, from, next) => {
 .panel-slide-left-leave-active,
 .panel-slide-right-enter-active,
 .panel-slide-right-leave-active {
-    transition: transform 0.25s ease, opacity 0.2s ease;
+    transition-property: transform, opacity;
+    transition-duration: 250ms;
+    transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 }
 .panel-slide-left-enter-from, .panel-slide-left-leave-to {
     transform: translateX(-100%);
@@ -1135,18 +1150,20 @@ onBeforeRouteUpdate((to, from, next) => {
     border-radius: 50%;
     background: var(--td-bg-color-container);
     border: 1px solid var(--td-component-stroke);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--td-shadow-card, 0 2px 8px rgba(0, 0, 0, 0.1));
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     color: var(--td-text-color-secondary);
-    transition: all 0.2s ease;
+    transition-property: background-color, color, box-shadow, transform;
+    transition-duration: 200ms;
+    transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 
     &:hover {
         background: var(--td-bg-color-container-hover);
-        color: var(--td-text-color-primary);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        color: var(--td-brand-color);
+        box-shadow: var(--td-shadow-card-hover, 0 4px 12px rgba(0, 0, 0, 0.15));
     }
 
     &:active {
@@ -1156,7 +1173,9 @@ onBeforeRouteUpdate((to, from, next) => {
 
 .scroll-btn-fade-enter-active,
 .scroll-btn-fade-leave-active {
-    transition: opacity 0.2s ease, transform 0.2s ease;
+    transition-property: opacity, transform;
+    transition-duration: 200ms;
+    transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 .scroll-btn-fade-enter-from,

@@ -95,13 +95,13 @@
       </svg>
     </div>
 
-    <!-- Logo - Top Left -->
-    <a href="https://github.com/Tencent/WeKnora" target="_blank" class="header-logo" :title="$t('common.github')">
+    <!-- Logo - Top Left (no GitHub link) -->
+    <div class="header-logo" :title="$t('common.github')">
       <img src="@/assets/img/xinwiki-logo.png" alt="XinWiki" class="logo-image" />
-    </a>
+    </div>
 
-    <!-- Header Links - Top Right -->
-    <div class="header-links">
+    <!-- Header Links - Top Right (hidden) -->
+    <div class="header-links" v-show="false">
       <a href="https://weknora.weixin.qq.com" target="_blank" class="header-link" :title="$t('common.website')">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
           stroke-linecap="round">
@@ -179,7 +179,6 @@
         <div class="form-card" v-if="!isRegisterMode">
           <div class="form-header">
             <h2 class="form-title">{{ $t('auth.login') }}</h2>
-            <p class="form-welcome">{{ $t('auth.subtitle') }}</p>
             <p v-if="registrationEnabled" class="form-hint">{{ $t('auth.loginHint') }}</p>
           </div>
 
@@ -576,7 +575,11 @@ const persistLoginResponse = async (response: any) => {
   }
 
   await nextTick()
-  router.replace('/platform/knowledge-bases')
+  // P0-3：支持 401 拦截器附带的 redirect 参数，登录后回跳到原页面而非固定首页。
+  // 仅允许 /platform 开头的相对路径回跳，避免开放重定向风险。
+  const redirectQuery = String(route.query.redirect || '').trim()
+  const safeRedirect = redirectQuery.startsWith('/platform/') ? redirectQuery : '/platform/knowledge-bases'
+  router.replace(safeRedirect)
 }
 
 const getBackendOIDCRedirectURI = () => `${window.location.origin}/api/v1/auth/oidc/callback`
@@ -779,7 +782,8 @@ onMounted(async () => {
   min-height: 100%;
   overflow: hidden;
   position: relative;
-  background: linear-gradient(225deg, #022c22 0%, #064e3b 15%, #065f46 25%, #047857 38%, #059669 50%, #07C05F 65%, #10B981 78%, #34D399 90%, #6EE7B7 100%);
+  /* Apple 蓝调渐变：从深蓝到亮蓝，替代原翠绿色系 */
+  background: linear-gradient(225deg, #002C64 0%, #003E8C 15%, #0050B5 25%, #0062DC 38%, #0071E3 50%, #1A7FE8 65%, #4095ED 78%, #66ABF0 90%, #8FC0F4 100%);
 
   &::before {
     content: '';
@@ -815,7 +819,7 @@ onMounted(async () => {
   border: 2px solid rgba(255, 255, 255, 0.3);
   box-shadow:
     0 0 15px rgba(255, 255, 255, 0.35),
-    0 0 30px rgba(16, 185, 129, 0.2),
+    0 0 30px rgba(0, 113, 227, 0.25),
     inset 0 0 8px rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
@@ -1067,13 +1071,13 @@ onMounted(async () => {
 
 .screenshot-swiper {
   width: 100%;
-  border-radius: 16px;
+  border-radius: var(--td-radius-extra-large, 16px);
   overflow: hidden;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   padding-bottom: 40px;
 
   :deep(.swiper-wrapper) {
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-timing-function: var(--ease-in-out-apple, cubic-bezier(0.65, 0, 0.35, 1));
   }
 
   :deep(.swiper-pagination) {
@@ -1086,7 +1090,9 @@ onMounted(async () => {
     height: 10px;
     background: rgba(255, 255, 255, 0.5);
     opacity: 1;
-    transition: all 0.3s ease;
+    transition-property: width, background-color, border-radius;
+    transition-duration: 300ms;
+    transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
     margin: 0 6px !important;
   }
 
@@ -1101,7 +1107,7 @@ onMounted(async () => {
   width: 100%;
   height: 100%;
   background: var(--td-bg-color-container);
-  border-radius: 16px;
+  border-radius: var(--td-radius-extra-large, 16px);
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -1162,7 +1168,7 @@ onMounted(async () => {
   align-items: center;
   gap: 7px;
   padding: 9px 15px;
-  border-radius: 20px;
+  border-radius: 999px;
   background: rgba(255, 255, 255, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.25);
   color: var(--td-text-color-anti);
@@ -1173,6 +1179,9 @@ onMounted(async () => {
   letter-spacing: 0.2px;
   cursor: pointer;
   position: relative;
+  transition-property: background-color, border-color, color;
+  transition-duration: 200ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 
   svg {
     flex-shrink: 0;
@@ -1186,6 +1195,10 @@ onMounted(async () => {
     background: rgba(255, 255, 255, 0.3);
     border-color: rgba(255, 255, 255, 0.4);
     color: var(--td-text-color-anti);
+  }
+
+  &:active {
+    transform: scale(0.97);
   }
 }
 
@@ -1222,8 +1235,8 @@ onMounted(async () => {
   min-width: 160px;
   background: rgba(255, 255, 255, 0.97);
   border: 1px solid var(--td-component-stroke);
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  border-radius: var(--td-radius-default, 8px);
+  box-shadow: var(--td-shadow-card, 0 4px 16px rgba(0, 0, 0, 0.12));
   overflow: hidden;
   z-index: 1000;
 }
@@ -1237,6 +1250,9 @@ onMounted(async () => {
   font-size: 13px;
   font-family: var(--app-font-family);
   color: var(--td-text-color-primary);
+  transition-property: background-color, color;
+  transition-duration: 150ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 
   .lang-flag {
     font-size: 16px;
@@ -1248,7 +1264,7 @@ onMounted(async () => {
   }
 
   .check-icon {
-    color: var(--td-success-color);
+    color: var(--td-brand-color);
     font-weight: 700;
     font-size: 14px;
     flex-shrink: 0;
@@ -1259,16 +1275,16 @@ onMounted(async () => {
   }
 
   &.active {
-    background: var(--td-success-color-light);
+    background: var(--brand-color-with-opacity, rgba(0, 113, 227, 0.08));
     color: var(--td-brand-color-active);
   }
 }
 
 .form-card {
   background: rgba(255, 255, 255, 0.97);
-  border-radius: 16px;
+  border-radius: var(--td-radius-extra-large, 16px);
   padding: 40px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--td-shadow-card-hover, 0 10px 40px rgba(0, 0, 0, 0.15));
   box-sizing: border-box;
   border: none;
   width: 100%;
@@ -1285,7 +1301,7 @@ onMounted(async () => {
   gap: 10px;
   padding: 12px 14px;
   margin-bottom: 20px;
-  border-radius: 10px;
+  border-radius: var(--td-radius-large, 10px);
   background: var(--td-bg-color-container-hover, rgba(0, 0, 0, 0.03));
   border: 1px solid var(--td-component-stroke);
   color: var(--td-text-color-primary);
@@ -1336,6 +1352,8 @@ onMounted(async () => {
   color: var(--td-text-color-primary);
   margin: 0 0 6px 0;
   font-family: var(--app-font-family);
+  letter-spacing: -0.02em;
+  text-wrap: balance;
 }
 
 .form-welcome {
@@ -1343,13 +1361,14 @@ onMounted(async () => {
   color: var(--td-text-color-secondary);
   margin: 0;
   font-family: var(--app-font-family);
+  text-wrap: pretty;
 }
 
 .form-hint {
   margin: 10px 0 0;
   padding: 8px 12px;
-  border-radius: 8px;
-  background: var(--td-success-color-light, rgba(7, 192, 95, 0.08));
+  border-radius: var(--td-radius-default, 8px);
+  background: var(--brand-color-with-opacity, rgba(0, 113, 227, 0.08));
   color: var(--td-brand-color-active);
   font-size: 12.5px;
   line-height: 1.5;
@@ -1388,16 +1407,23 @@ onMounted(async () => {
 
   &__button {
     height: 46px;
-    border-radius: 8px;
+    border-radius: var(--td-radius-default, 8px);
     font-size: 15px;
     font-weight: 500;
     border-color: var(--td-brand-color);
     color: var(--td-brand-color);
+    transition-property: border-color, color, background-color, transform;
+    transition-duration: 200ms;
+    transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 
     &:hover {
       border-color: var(--td-brand-color-active);
       color: var(--td-brand-color-active);
-      background: var(--td-success-color-light, rgba(7, 192, 95, 0.08));
+      background: var(--brand-color-with-opacity, rgba(0, 113, 227, 0.08));
+    }
+
+    &:active {
+      transform: scale(0.98);
     }
   }
 }
@@ -1422,13 +1448,15 @@ onMounted(async () => {
 
   :deep(.t-input) {
     border: 1px solid var(--td-component-stroke);
-    border-radius: 8px;
+    border-radius: var(--td-radius-default, 8px);
     background: var(--td-bg-color-container);
-    transition: all 0.2s;
+    transition-property: border-color, box-shadow, background-color;
+    transition-duration: 200ms;
+    transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 
     &:focus-within {
       border-color: var(--td-brand-color);
-      box-shadow: 0 0 0 3px rgba(7, 192, 95, 0.1);
+      box-shadow: 0 0 0 3px var(--brand-color-glow, rgba(0, 113, 227, 0.15));
     }
 
     &:hover {
@@ -1471,11 +1499,18 @@ onMounted(async () => {
 
 .submit-button {
   height: 46px;
-  border-radius: 8px;
+  border-radius: var(--td-radius-default, 8px);
   font-size: 16px;
   font-weight: 500;
   font-family: var(--app-font-family);
   margin: 20px 0 16px 0;
+  transition-property: transform, box-shadow, background-color;
+  transition-duration: 200ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
+
+  &:active {
+    transform: scale(0.98);
+  }
 }
 
 .oidc-divider {
@@ -1504,9 +1539,16 @@ onMounted(async () => {
 
 .oidc-button {
   height: 46px;
-  border-radius: 8px;
+  border-radius: var(--td-radius-default, 8px);
   font-size: 15px;
   font-weight: 500;
+  transition-property: transform, background-color, border-color;
+  transition-duration: 200ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
+
+  &:active {
+    transform: scale(0.98);
+  }
 }
 
 .form-footer {
@@ -1523,10 +1565,12 @@ onMounted(async () => {
     text-decoration: none;
     margin-left: 4px;
     font-weight: 500;
-    transition: all 0.2s;
+    transition-property: color, text-decoration;
+    transition-duration: 200ms;
+    transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 
     &:hover {
-      color: var(--td-brand-color);
+      color: var(--td-brand-color-active);
       text-decoration: underline;
     }
   }
@@ -1558,7 +1602,7 @@ onMounted(async () => {
       width: 20px;
       height: 20px;
       border-radius: 50%;
-      background: var(--td-success-color-light);
+      background: var(--brand-color-with-opacity, rgba(0, 113, 227, 0.08));
       color: var(--td-brand-color-active);
       display: flex;
       align-items: center;
@@ -1757,7 +1801,8 @@ onMounted(async () => {
 <style lang="less">
 html[theme-mode="dark"] {
   .login-layout {
-    background: linear-gradient(225deg, #011a14 0%, #032e22 15%, #043a2c 25%, #05503d 38%, #046647 50%, #038a56 65%, #049b60 78%, #06a06a 90%, #07b074 100%);
+    /* Apple 蓝暗色色阶：从近黑深蓝到中蓝 */
+    background: linear-gradient(225deg, #001A3D 0%, #002657 15%, #003370 25%, #00408A 38%, #004DA0 50%, #0A5BB0 65%, #1A6BBF 78%, #2D7BCD 90%, #408BDB 100%);
   }
 
   .knowledge-node {
@@ -1829,7 +1874,7 @@ html[theme-mode="dark"] {
   }
 
   .login-features .feature-icon {
-    background: rgba(6, 176, 77, 0.15);
+    background: rgba(0, 113, 227, 0.18);
   }
 }
 </style>

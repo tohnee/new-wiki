@@ -99,6 +99,20 @@ The framework supports auto-syncing knowledge from Feishu, Notion, and Yuque (mo
 
 Fully modular pipeline from document parsing, vectorization, and retrieval to LLM inference — every component is swappable and extensible. Supports local / private cloud deployment with full data sovereignty and a zero-barrier Web UI for quick onboarding.
 
+### 📊 Architecture Deep Analysis
+
+For an in-depth review of WeKnora's architecture across 7 dimensions, see [`docs/architecture_deep_analysis.md`](./docs/architecture_deep_analysis.md):
+
+| Dimension | Score | Key Finding |
+|-----------|-------|-------------|
+| Permission & RBAC | 5.5/10 | RBAC complete but tightly coupled (~12k LOC across 25+ files); UUM integration needs 6-phase refactor |
+| Multimodal Parsing | 8/10 | 7-engine registry + VLM pipeline; docreader is a lightweight facade |
+| Wiki QA Pipeline | 7.7/10 | Industrial-grade 2-pass LLM compilation + Map-Reduce; no standalone Wiki QA mode |
+| ReAct Agent | 8/10 | Full think→analyze→act→observe loop; 24 tools (22 built-in + 2 web); Anthropic lacks tool calling |
+| Web Search | 6.8/10 | 7 providers + multi-layer SSRF guard; no rate limiting or cross-session cache |
+| Deep Research | 3.9/10 | Only ID constant reserved; no orchestration service |
+| Notebook Studio | 6.0/10 | Frontend shell complete (14 visible tools); zero backend implementation |
+
 ## 🧩 Feature Overview
 
 **Intelligent Conversation**

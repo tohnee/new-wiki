@@ -69,6 +69,10 @@ export async function getSession(session_id: string) {
   return get(`/api/v1/sessions/${session_id}`);
 }
 
+export async function updateSession(session_id: string, data: { title?: string }) {
+  return put(`/api/v1/sessions/${session_id}`, data);
+}
+
 export async function stopSession(session_id: string, message_id: string) {
   return post(`/api/v1/sessions/${session_id}/stop`, { message_id });
 }

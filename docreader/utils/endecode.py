@@ -20,12 +20,11 @@ from PIL import Image
 logger = logging.getLogger(__name__)
 
 
-def decode_image(image: Union[str, bytes, Image.Image, np.ndarray]) -> str:
+def encode_image_to_base64(image: Union[str, bytes, Image.Image, np.ndarray]) -> str:
     """Convert image to base64 encoded string.
 
-    This function handles multiple image input formats and converts them
-    to a base64 encoded string representation, which is useful for embedding
-    images in JSON, HTML, or other text-based formats.
+    原函数名 decode_image 与实际行为相反（实际是 encode），已修正。
+    行为不变：bytes/PIL/ndarray/路径 → base64 字符串。
 
     Args:
         image: Image in one of the following formats:
@@ -42,11 +41,11 @@ def decode_image(image: Union[str, bytes, Image.Image, np.ndarray]) -> str:
 
     Example:
         >>> # From file path
-        >>> base64_str = decode_image("/path/to/image.png")
+        >>> base64_str = encode_image_to_base64("/path/to/image.png")
         >>> # From PIL Image
         >>> from PIL import Image
         >>> img = Image.open("photo.jpg")
-        >>> base64_str = decode_image(img)
+        >>> base64_str = encode_image_to_base64(img)
     """
     if isinstance(image, str):
         # Handle file path: read file and encode to base64
@@ -75,11 +74,11 @@ def decode_image(image: Union[str, bytes, Image.Image, np.ndarray]) -> str:
     raise ValueError(f"Unsupported image type: {type(image)}")
 
 
-def encode_image(image: str, errors="strict") -> bytes:
+def decode_image_from_base64(image: str, errors="strict") -> bytes:
     """Decode a base64 encoded image string back to bytes.
 
-    This function converts a base64 encoded string representation of an image
-    back into its original binary bytes format.
+    原函数名 encode_image 与实际行为相反（实际是 decode），已修正。
+    行为不变：base64 字符串 → bytes。
 
     Args:
         image: Base64 encoded string representation of an image
@@ -198,7 +197,7 @@ def decode_bytes(
 
 
 if __name__ == "__main__":
-    # Example: Test encode_image with error handling
+    # Example: Test decode_image_from_base64 with error handling
     # This demonstrates decoding a base64 string with 'ignore' error mode
     img = "test![](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgA)test"
-    encode_image(img, errors="ignore")
+    decode_image_from_base64(img, errors="ignore")

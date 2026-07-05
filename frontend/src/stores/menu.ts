@@ -68,6 +68,12 @@ export const useMenuStore = defineStore('menuStore', () => {
 
   const liteHiddenPaths = new Set(['logout', 'organizations'])
 
+  // creatChat 已不再作为侧栏入口渲染（统一为 notebook），
+  // 但其 children 仍用作会话列表的数据容器（menu.vue 的 sessionBuckets 同步、
+  // 批量管理 allSessionIds、ensureSessionInSidebar 等都依赖它），因此保留在 menuArr 中，
+  // 仅在 visibleMenuArr 中隐藏。
+  const sidebarHiddenPaths = new Set(['creatChat'])
+
   // 共享空间 (organizations) 仅对当前租户的 admin / owner 暴露入口。
   // viewer / contributor 即便在共享空间里拥有资源，也无需自行管理共享关系，
   // 入口在侧栏只会徒增噪音；后端 RBAC 才是权限的最终来源（见 middleware/rbac.go）。
@@ -78,6 +84,9 @@ export const useMenuStore = defineStore('menuStore', () => {
         return false
       }
       if (item.path === 'organizations' && !authStore.hasRole('admin')) {
+        return false
+      }
+      if (sidebarHiddenPaths.has(item.path)) {
         return false
       }
       return true

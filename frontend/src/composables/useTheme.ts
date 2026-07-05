@@ -24,9 +24,13 @@ function getSystemTheme(): 'light' | 'dark' {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
-/** Wails：与原生窗口底色 / 系统深浅色一致，减轻 Ctrl+R 整窗白闪（浅色与 --td-bg-color-page #eee 对齐） */
+/** Wails：与原生窗口底色 / 系统深浅色一致，减轻 Ctrl+R 整窗白闪
+ *  浅色与 --td-bg-color-page (#F8F9FA, NotebookLM 浅灰) 对齐；
+ *  暗色与 --td-bg-color-page 暗色 (#181818) 对齐。
+ *  注意：Web 端也会执行此函数（applyTheme 无环境判断），因此颜色必须
+ *  与 theme.css 中的 --td-bg-color-page 保持一致，否则会覆盖设计规范。 */
 function syncWailsNativeChrome(effective: 'light' | 'dark') {
-  const bg = effective === 'dark' ? '#181818' : '#eeeeee'
+  const bg = effective === 'dark' ? '#181818' : '#F8F9FA'
   document.documentElement.style.background = bg
   document.documentElement.style.minHeight = '100%'
   document.documentElement.style.colorScheme = effective === 'dark' ? 'dark' : 'light'
@@ -53,7 +57,7 @@ function syncWailsNativeChrome(effective: 'light' | 'dark') {
       w.WindowSetBackgroundColour(24, 24, 24, 255)
     } else {
       w.WindowSetLightTheme?.()
-      w.WindowSetBackgroundColour(238, 238, 238, 255)
+      w.WindowSetBackgroundColour(248, 249, 250, 255)
     }
   } catch {
     /* 非桌面壳或未注入 runtime */

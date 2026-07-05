@@ -80,6 +80,9 @@
       </div>
     </div>
   </div>
+
+  <!-- 新手引导（迁移自 creatChat） -->
+  <ContextualGuide tour="chat" :when="true" />
 </template>
 
 <script setup lang="ts">
@@ -87,13 +90,36 @@ import NotebookHeader from '@/components/notebook/NotebookHeader.vue'
 import SourcePanel from '@/components/notebook/SourcePanel.vue'
 import NotebookChat from '@/components/notebook/NotebookChat.vue'
 import StudioPanel from '@/components/notebook/StudioPanel.vue'
+import ContextualGuide from '@/components/ContextualGuide.vue'
 import { useNotebookStore } from '@/stores/notebook'
+import { useRoute } from 'vue-router'
+import { onMounted, watch } from 'vue'
 
 const notebookStore = useNotebookStore()
+const route = useRoute()
 
 const handleTitleUpdate = (title: string) => {
   notebookStore.setNotebookTitle(title)
 }
+
+// ===== 调试日志：记录页面加载时的路由状态 =====
+onMounted(() => {
+  console.log('[NotebookView] mounted', {
+    path: route.path,
+    name: route.name,
+    params: route.params,
+    query: route.query,
+    sessionId: route.params.sessionId ?? null,
+  })
+})
+
+// 监听路由变化，记录切换行为（便于排查旧 creatChat 重定向是否生效）
+watch(
+  () => route.fullPath,
+  (newPath, oldPath) => {
+    console.log('[NotebookView] route changed', { from: oldPath, to: newPath, name: route.name })
+  },
+)
 
 // 拖拽调整面板宽度
 let resizeType: 'left' | 'right' | null = null
@@ -137,7 +163,8 @@ const stopResize = () => {
   flex-direction: column;
   width: 100%;
   height: 100%;
-  background: var(--td-bg-color-container);
+  /* NotebookLM 风格：浅灰背景，让三栏白色面板浮起 */
+  background: var(--td-bg-color-page);
   overflow: hidden;
 }
 
@@ -147,23 +174,32 @@ const stopResize = () => {
   min-height: 0;
   min-width: 0;
   position: relative;
+  /* 给三栏之间留出浅灰间隔，强化卡片浮起感 */
+  gap: 0;
+  padding: 0;
 }
 
 .panel {
   min-width: 0;
   height: 100%;
   overflow: hidden;
+  /* NotebookLM 卡片化：白色背景 + 微妙阴影 */
+  background: var(--td-bg-color-container);
 }
 
 .panel-left,
 .panel-right {
   flex-shrink: 0;
-  transition: width 0.25s ease;
+  transition-property: width;
+  transition-duration: var(--duration-base, 220ms);
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 .panel-center {
   flex: 1;
   min-width: 400px;
+  /* 中栏对话区使用浅灰背景，与左右白色面板形成对比 */
+  background: var(--td-bg-color-page);
   border-left: 1px solid var(--td-component-stroke);
   border-right: 1px solid var(--td-component-stroke);
 }
@@ -194,13 +230,19 @@ const stopResize = () => {
   border: none;
   background: var(--td-bg-color-secondarycontainer);
   color: var(--td-text-color-secondary);
-  border-radius: 6px;
+  border-radius: var(--td-radius-default, 6px);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition-property: background-color, color;
+  transition-duration: var(--duration-fast, 150ms);
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 
   &:hover {
-    background: var(--td-brand-color-light);
+    background: var(--brand-color-with-opacity, rgba(0, 113, 227, 0.08));
     color: var(--td-brand-color);
+  }
+
+  &:active {
+    transform: scale(0.96);
   }
 
   &.studio-expand {
@@ -214,7 +256,8 @@ const stopResize = () => {
   cursor: ew-resize;
   position: relative;
   background: transparent;
-  transition: background 0.15s ease;
+  transition-property: background;
+  transition-duration: var(--duration-fast, 150ms);
   z-index: 5;
 
   &::after {
@@ -225,7 +268,8 @@ const stopResize = () => {
     width: 2px;
     height: 100%;
     background: transparent;
-    transition: background 0.15s ease;
+    transition-property: background;
+    transition-duration: var(--duration-fast, 150ms);
   }
 
   &:hover::after,
@@ -234,12 +278,14 @@ const stopResize = () => {
   }
 }
 
-/* 面板展开/收起动画 */
+/* 面板展开/收起动画（Apple 风格曲线） */
 .panel-slide-left-enter-active,
 .panel-slide-left-leave-active,
 .panel-slide-right-enter-active,
 .panel-slide-right-leave-active {
-  transition: transform 0.25s ease, opacity 0.25s ease;
+  transition-property: transform, opacity;
+  transition-duration: var(--duration-base, 220ms);
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 .panel-slide-left-enter-from {

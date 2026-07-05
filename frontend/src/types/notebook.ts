@@ -59,6 +59,12 @@ export interface StudioJob {
   errorMessage?: string
   /** 进度百分比 0-100 */
   progress?: number
+  /**
+   * 触发该 job 时所属的对话 session ID。
+   * 用于按 session 过滤历史记录、避免跨会话污染；空字符串表示尚未绑定 session
+   * （向后兼容已有数据）。
+   */
+  sessionId?: string
 }
 
 /** Studio 面板状态 */
@@ -79,12 +85,10 @@ export type SourceItemType = 'knowledge_base' | 'document' | 'web_search' | 'faq
 /** 来源项（左栏列表项） */
 export interface SourceItem {
   id: string
+  /** 显示名称 */
+  name: string
+  /** 来源类型：knowledge_base 表示知识库分组，document 表示知识库内文档 */
   type: SourceItemType
-  title: string
-  /** 副标题/描述 */
-  subtitle?: string
-  /** 图标/emoji */
-  icon?: string
   /** 是否已选中 */
   selected: boolean
   /** 来源/创建时间 */
@@ -99,9 +103,13 @@ export interface SourceItem {
 export interface SourceGroup {
   id: string
   name: string
+  /** 分组类型：knowledge_base / web_sources */
+  type: 'knowledge_base' | 'web_sources'
   items: SourceItem[]
   /** 是否展开 */
   expanded: boolean
+  /** 搜索过滤后是否可见 */
+  visible: boolean
 }
 
 /** Notebook 整体布局状态 */

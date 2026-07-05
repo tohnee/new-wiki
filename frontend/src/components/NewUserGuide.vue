@@ -30,7 +30,7 @@ const steps = computed<SpotlightGuideStep[]>(() => [
   },
   {
     key: 'chat',
-    target: '[data-guide="nav-creatChat"]',
+    target: '[data-guide="nav-notebook"]',
     placement: 'right',
     before: () => uiStore.expandSidebar(),
   },

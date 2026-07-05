@@ -1,24 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600">
   <defs>
     <linearGradient id="bg1" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#F0FDF4"/>
-      <stop offset="100%" stop-color="#D1FAE5"/>
+      <stop offset="0%" stop-color="#EBF3FE"/>
+      <stop offset="100%" stop-color="#C5DCF7"/>
     </linearGradient>
     <linearGradient id="brand1" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#059669"/>
-      <stop offset="100%" stop-color="#10B981"/>
+      <stop offset="0%" stop-color="#0050B5"/>
+      <stop offset="100%" stop-color="#0071E3"/>
     </linearGradient>
     <filter id="soft1" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#065F46" flood-opacity="0.12"/>
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#002C64" flood-opacity="0.12"/>
     </filter>
   </defs>
 
   <rect width="800" height="600" fill="url(#bg1)"/>
-  <circle cx="120" cy="90" r="120" fill="#10B981" opacity="0.05"/>
-  <circle cx="700" cy="520" r="140" fill="#34D399" opacity="0.06"/>
+  <circle cx="120" cy="90" r="120" fill="#0071E3" opacity="0.05"/>
+  <circle cx="700" cy="520" r="140" fill="#4095ED" opacity="0.06"/>
 
-  <text x="64" y="84" font-family="Arial, sans-serif" font-size="32" font-weight="700" fill="#065F46">Intelligent Document Retrieval</text>
-  <text x="64" y="116" font-family="Arial, sans-serif" font-size="15" fill="#059669">Multimodal parsing &#183; Semantic understanding &#183; Precise locating</text>
+  <text x="64" y="84" font-family="Arial, sans-serif" font-size="32" font-weight="700" fill="#002C64">Intelligent Document Retrieval</text>
+  <text x="64" y="116" font-family="Arial, sans-serif" font-size="15" fill="#0050B5">Multimodal parsing &#183; Semantic understanding &#183; Precise locating</text>
 
   <g filter="url(#soft1)">
     <rect x="64" y="148" width="672" height="396" rx="20" fill="#FFFFFF"/>

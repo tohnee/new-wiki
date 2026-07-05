@@ -6,7 +6,6 @@ export default {
     organizations: 'Shared Spaces',
     chat: 'Chat',
     newChat: 'New Chat',
-    createChat: 'Create Chat',
     tenant: 'Account Info',
     settings: 'System Settings',
     logout: 'Logout',
@@ -2206,10 +2205,8 @@ export default {
     goToAgentSettings: 'Go to agent settings'
   },
   createChat: {
-    title: 'Hi, I am XinWiki — your knowledge, within reach',
     newSessionTitle: 'New Session',
     messages: {
-      selectKnowledgeBase: 'Please select a knowledge base first',
       createFailed: 'Failed to create session',
       createError: 'Failed to create session, please try again later'
     }

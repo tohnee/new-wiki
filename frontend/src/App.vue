@@ -266,6 +266,10 @@ onUnmounted(() => {
 html {
   /* 提示 UA 使用对应配色绘制滚动条等，减少主题切换时的额外重绘 */
   color-scheme: light dark;
+  /* Apple 风格字体平滑：在 macOS 上渲染更清晰 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 body,
@@ -277,10 +281,12 @@ html,
   padding: 0;
   font-size: 14px;
   font-family: var(--app-font-family);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
   background: var(--td-bg-color-page);
   color: var(--td-text-color-primary);
+  /* 平滑过渡主题切换 */
+  transition-property: background-color, color;
+  transition-duration: var(--duration-base, 220ms);
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 #app {
@@ -288,5 +294,50 @@ html,
   isolation: isolate;
   transform: translateZ(0);
   backface-visibility: hidden;
+}
+
+/* 全局选中文本颜色（Apple Blue 系） */
+::selection {
+  background: var(--brand-color-with-opacity, rgba(0, 113, 227, 0.16));
+  color: var(--td-text-color-primary);
+}
+
+/* 全局聚焦轮廓：品牌色环 */
+:focus-visible {
+  outline: 2px solid var(--td-brand-color);
+  outline-offset: 2px;
+  border-radius: var(--td-radius-small, 4px);
+}
+
+/* 全局链接基础样式 */
+a {
+  color: var(--td-brand-color);
+  text-decoration: none;
+  transition-property: color;
+  transition-duration: var(--duration-fast, 150ms);
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
+}
+a:hover {
+  color: var(--td-brand-color-active);
+  text-decoration: underline;
+}
+
+/* 全局按钮基础触感（Apple 风格按压缩放） */
+button:not(:disabled) {
+  transition-property: transform, background-color, border-color, color, box-shadow;
+  transition-duration: var(--duration-fast, 150ms);
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
+}
+button:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+/* 全局卡片基础样式（NotebookLM 风格浮起卡片） */
+.t-card,
+.app-card {
+  background: var(--td-bg-color-container);
+  border-radius: var(--td-radius-large, 12px);
+  box-shadow: var(--td-shadow-card, 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.05));
+  border: 1px solid var(--td-component-stroke);
 }
 </style>

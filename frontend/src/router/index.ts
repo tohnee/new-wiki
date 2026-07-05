@@ -1,11 +1,24 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteLocationNormalized } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { autoSetup, getCurrentUser, userInfoFromApi } from '@/api/auth'
+import { autoSetup, getCurrentUser, userInfoFromApi, getAuthConfig } from '@/api/auth'
 
 /** Lite /桌面 WebView 硬刷新时可能只打开 `/`，用 session 记住上次页面以便恢复 */
 const LITE_LAST_PATH_KEY = 'weknora_lite_last_path'
 const AUTO_SETUP_FAILED_KEY = 'weknora_auto_setup_failed'
+/**
+ * 服务端初始化状态缓存。
+ *
+ * P0-5 修复：原 autoSetup 兜底登录仅靠 localStorage `weknora_auto_setup_failed`
+ * 标记判定"已尝试过"，没有服务端版本探测。服务端重置 / 重新部署 / 切换后端
+ * 后，前端 localStorage 仍认为未失败，会反复尝试 autoSetup 拖慢首屏。
+ *
+ * 改用 sessionStorage 缓存本次会话内的服务端探测结果：
+ *   - 'ready'     服务端已初始化，可以尝试 autoSetup
+ *   - 'uninit'    服务端尚未初始化（getAuthConfig 失败），跳过 autoSetup
+ * 仅在 sessionStorage 中保存（关闭标签即失效），避免跨会话用过期数据。
+ */
+const SERVER_INIT_STATUS_KEY = 'weknora_server_init_status'
 
 function shouldTryAutoSetup() {
   return localStorage.getItem(AUTO_SETUP_FAILED_KEY) !== 'true'
@@ -13,6 +26,32 @@ function shouldTryAutoSetup() {
 
 function markAutoSetupFailed() {
   localStorage.setItem(AUTO_SETUP_FAILED_KEY, 'true')
+}
+
+/**
+ * 探测服务端初始化状态。
+ *
+ * 调用 /auth/config 这个公开接口（无需鉴权）作为轻量级心跳：
+ *   - 返回 success: true → 服务端可用且已初始化
+ *   - 返回 success: false 或抛错 → 服务端未就绪，跳过 autoSetup
+ *
+ * 结果缓存在 sessionStorage，避免每次路由跳转都打一次。
+ */
+async function probeServerInitStatus(): Promise<boolean> {
+  // 命中缓存直接返回
+  const cached = sessionStorage.getItem(SERVER_INIT_STATUS_KEY)
+  if (cached === 'ready') return true
+  if (cached === 'uninit') return false
+
+  try {
+    const resp = await getAuthConfig()
+    const ready = !!resp?.success
+    sessionStorage.setItem(SERVER_INIT_STATUS_KEY, ready ? 'ready' : 'uninit')
+    return ready
+  } catch {
+    sessionStorage.setItem(SERVER_INIT_STATUS_KEY, 'uninit')
+    return false
+  }
 }
 
 function isLiteEdition(authStore: ReturnType<typeof useAuthStore>) {
@@ -135,18 +174,6 @@ const router = createRouter({
           meta: { requiresInit: true, requiresAuth: true }
         },
         {
-          path: "creatChat",
-          name: "globalCreatChat",
-          component: () => import("../views/creatChat/creatChat.vue"),
-          meta: { requiresInit: true, requiresAuth: true }
-        },
-        {
-          path: "knowledge-bases/:kbId/creatChat",
-          name: "kbCreatChat",
-          component: () => import("../views/creatChat/creatChat.vue"),
-          meta: { requiresInit: true, requiresAuth: true }
-        },
-        {
           path: "chat/:chatid",
           name: "chat",
           component: () => import("../views/chat/index.vue"),
@@ -157,6 +184,15 @@ const router = createRouter({
           name: "notebook",
           component: () => import("../views/notebook/NotebookView.vue"),
           meta: { requiresInit: true, requiresAuth: true }
+        },
+        // creatChat 已统一到 notebook，保留旧路径重定向避免外链/书签失效
+        {
+          path: "creatChat",
+          redirect: { name: "notebook" }
+        },
+        {
+          path: "knowledge-bases/:kbId/creatChat",
+          redirect: { name: "notebook" }
         },
         {
           path: "organizations",
@@ -195,6 +231,16 @@ const router = createRouter({
       component: () => import('../views/dev/MarkdownTestPage.vue'),
       meta: { requiresAuth: false, requiresInit: false }
     }] : []),
+    // P0-4 修复：404 兜底路由。原路由表缺少通配匹配，未命中任何路由时
+    // vue-router 抛警告且页面白屏，体验灾难。这里加一个 catch-all 渲染 NotFound，
+    // 并在 meta 标记 requiresAuth: false 避免未登录用户被二次重定向到 /login
+    // 又再次进入 NotFound 的死循环。
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'notFound',
+      component: () => import('../views/NotFound.vue'),
+      meta: { requiresAuth: false, requiresInit: false },
+    },
   ],
 });
 
@@ -322,6 +368,13 @@ router.beforeEach(async (to, from, next) => {
 
       if (!autoSetupAttempted && shouldTryAutoSetup()) {
         autoSetupAttempted = true
+        // P0-5 修复：先探测服务端是否已初始化，避免服务端重置后盲目 autoSetup
+        const serverReady = await probeServerInitStatus()
+        if (!serverReady) {
+          // 服务端未就绪：跳过 autoSetup，直接到登录页让用户看到错误
+          next('/login')
+          return
+        }
         try {
           const response = await autoSetup()
           if (response.success) {
@@ -361,5 +414,23 @@ router.afterEach((to) => {
   if (!to.path.startsWith('/platform')) return
   sessionStorage.setItem(LITE_LAST_PATH_KEY, to.fullPath)
 })
+
+/**
+ * 暴露当前 router 实例的 getter，给非组件场景（如 utils/request.ts 的
+ * axios 401 拦截器）使用。在 main.ts 调用 setRouterInstance(router) 后才可用。
+ *
+ * P0-3 修复背景：原 401 拦截器用 window.location.href = '/login' 硬跳转，
+ * 整页刷新会丢失所有 Pinia 状态和未保存的输入；改用 router.push 后保留 SPA
+ * 状态，并附带 redirect 参数支持登录后回跳到原页面。
+ */
+let currentRouter: typeof router | null = null
+
+export function setRouterInstance(r: typeof router) {
+  currentRouter = r
+}
+
+export function getAppRouter(): typeof router | null {
+  return currentRouter
+}
 
 export default router

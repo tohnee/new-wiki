@@ -7,6 +7,7 @@ import {
   sanitizeStreamRequestBody,
   type StreamRequestMeta,
 } from '@/utils/chatRequestDebug';
+import { refreshToken as refreshTokenAPI } from '@/api/auth/index';
 
 
 
@@ -23,7 +24,7 @@ interface StreamOptions {
 
 export function useStream() {
   // 响应式状态
-  const output = ref('')              // 显示内容
+  // 注：原 output ref 从未被外部读取（chunkHandler 才是真正的内容出口），已删除。
   const isStreaming = ref(false)      // 流状态
   const isLoading = ref(false)        // 初始加载
   const error = ref<string | null>(null)// 错误信息
@@ -31,24 +32,24 @@ export function useStream() {
   let controller = new AbortController()
   let streamGeneration = 0
 
-  // 流式渲染缓冲
-  let buffer: string[] = []
-  let renderTimer: number | null = null
+  // 流式渲染缓冲：保留 push 给 onmessage 写入，但 renderTimer 从未启用过，
+  // 已经移除。buffer 仅作为调试观察用途保留，不再参与渲染。
+  let buffer: any[] = []
 
   // 启动流式请求
-  const startStream = async (params: { session_id: any; query: any; knowledge_base_ids?: string[]; knowledge_ids?: string[]; tag_ids?: string[]; agent_enabled?: boolean; agent_id?: string; web_search_enabled?: boolean; enable_memory?: boolean; summary_model_id?: string; mcp_service_ids?: string[]; skill_names?: string[]; mentioned_items?: Array<{id: string; name: string; type: string; kb_type?: string; kb_id?: string; kb_name?: string; service_id?: string; skill_name?: string}>; images?: Array<{data: string}>; attachment_uploads?: Array<{data: string; file_name: string; file_size: number}>; method: string; url: string; embed_token?: string; embed_session_sig?: string; embed_visitor_id?: string }) => {
+  const startStream = async (params: { session_id: any; query: any; knowledge_base_ids?: string[]; knowledge_ids?: string[]; tag_ids?: string[]; agent_enabled?: boolean; agent_id?: string; web_search_enabled?: boolean; enable_memory?: boolean; summary_model_id?: string; mcp_service_ids?: string[]; skill_names?: string[]; mentioned_items?: Array<{id: string; name: string; type: string; kb_type?: string; kb_id?: string; kb_name?: string; service_id?: string; skill_name?: string}>; images?: Array<{data: string}>; attachment_uploads?: Array<{data: string; file_name: string; file_size: number}>; method: string; url: string; embed_token?: string; embed_session_sig?: string; embed_visitor_id?: string }, __retryAfter401 = false) => {
     const myGeneration = ++streamGeneration
     // 重置状态
-    output.value = '';
     error.value = null;
     isStreaming.value = true;
     isLoading.value = true;
+    buffer = [];
 
     // 获取API配置
     const apiUrl = getApiBaseUrl();
-    
+
     const embedToken = params.embed_token;
-    const token = embedToken || localStorage.getItem('weknora_token');
+    let token = embedToken || localStorage.getItem('weknora_token');
     if (!token) {
       error.value = i18n.global.t('error.tokenNotFound');
       stopStream();
@@ -162,6 +163,36 @@ export function useStream() {
         openWhenHidden: true,
 
         onopen: async (res) => {
+          // P0-2 修复：401 时尝试 refresh token 后重试一次（避免长对话 token 过期
+          // 直接丢失回复且无自动恢复）。fetchEventSource 绕开了 axios 拦截器，
+          // 必须在这里手动处理 401。
+          if (res.status === 401 && !embedToken && !__retryAfter401) {
+            const storedRefreshToken = localStorage.getItem('weknora_refresh_token')
+            if (storedRefreshToken) {
+              try {
+                const refreshResp = await refreshTokenAPI(storedRefreshToken)
+                if (refreshResp.success && refreshResp.data?.token) {
+                  localStorage.setItem('weknora_token', refreshResp.data.token)
+                  if (refreshResp.data.refreshToken) {
+                    localStorage.setItem('weknora_refresh_token', refreshResp.data.refreshToken)
+                  }
+                  // 取消当前 stream，递归重试一次（带 __retryAfter401=true 避免无限循环）
+                  stopStream()
+                  if (myGeneration === streamGeneration) {
+                    await startStream(params, true)
+                  }
+                  return
+                }
+              } catch (e) {
+                if (import.meta.env?.DEV) {
+                  console.warn('[stream] refreshToken on 401 failed:', e)
+                }
+              }
+            }
+            // refresh 失败或不可用：抛错让 onerror 处理
+            const errMsg = i18n.global.t('error.streamFailed') + ': 401 Unauthorized'
+            throw new Error(errMsg)
+          }
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           console.log(`[TTFB] response:headers request_id=${requestID} elapsed_ms=${(performance.now() - sentAt).toFixed(1)}`);
           isLoading.value = false;
@@ -169,7 +200,19 @@ export function useStream() {
 
         onmessage: (ev) => {
           if (myGeneration !== streamGeneration) return
-          const parsed = JSON.parse(ev.data);
+          // 防御：SSE 流中可能混入非 JSON chunk（心跳、注释行、空行、半截包等）。
+          // 直接 JSON.parse 抛错会让 fetchEventSource 进入 onerror 并中断整条流，
+          // 导致长对话偶发断流。parse 失败时跳过该 chunk 即可。
+          if (!ev.data) return
+          let parsed: any
+          try {
+            parsed = JSON.parse(ev.data)
+          } catch (e) {
+            if (import.meta.env?.DEV) {
+              console.warn('[stream] Skipping non-JSON SSE chunk:', ev.data?.slice?.(0, 200) ?? ev.data, e)
+            }
+            return
+          }
           // Log first answer chunk for end-to-end TTFB measurement.
           // Filter by event type so non-answer events (references, tool
           // calls, etc.) don't count as the "first token" arrival.
@@ -218,7 +261,6 @@ export function useStream() {
   onUnmounted(stopStream)
 
   return {
-    output,          // 显示内容
     isStreaming,     // 是否在流式传输中
     isLoading,       // 初始连接状态
     error,

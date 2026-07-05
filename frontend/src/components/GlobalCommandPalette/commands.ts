@@ -40,7 +40,7 @@ export function buildCommands(ctx: CommandContext): CmdkCommand[] {
       keywords: ['new', 'chat', 'conversation', '新建', '对话', 'создать'],
       run: () => {
         close()
-        router.push('/platform/creatChat')
+        router.push('/platform/notebook')
       },
     },
     {

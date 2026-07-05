@@ -172,7 +172,7 @@ class DocxParser(BaseParser):
                     if line.images:
                         for image_data in line.images:
                             if image_data.url and image_data.object:
-                                image_parts[image_data.url] = endecode.decode_image(
+                                image_parts[image_data.url] = endecode.encode_image_to_base64(
                                     image_data.object
                                 )
                                 image_data.object.close()

@@ -1045,14 +1045,6 @@ const updateModelDropdownPosition = () => {
   // the browser will render them under the root `zoom` (see utils/zoom.ts).
   const zoom = getRootZoom();
   const rect = rectToCssPx(anchor.getBoundingClientRect(), zoom);
-  console.log('[Model Dropdown] Button rect:', {
-    top: rect.top,
-    bottom: rect.bottom,
-    left: rect.left,
-    right: rect.right,
-    width: rect.width,
-    height: rect.height
-  });
 
   const dropdownWidth = 280;
   const offsetY = 8;
@@ -1069,17 +1061,10 @@ const updateModelDropdownPosition = () => {
 
   // 垂直定位：紧贴按钮，使用合理的高度避免空白
   const preferredDropdownHeight = 280; // 优选高度（紧凑且够用）
-  const maxDropdownHeight = 360; // 最大高度
   const minDropdownHeight = 200; // 最小高度
   const topMargin = 20; // 顶部留白
   const spaceBelow = vh - rect.bottom; // 下方剩余空间
   const spaceAbove = rect.top; // 上方剩余空间
-
-  console.log('[Model Dropdown] Space check:', {
-    spaceBelow,
-    spaceAbove,
-    windowHeight: vh
-  });
 
   let actualHeight: number;
   let shouldOpenBelow: boolean;
@@ -1089,7 +1074,6 @@ const updateModelDropdownPosition = () => {
     // 下方有足够空间，向下弹出
     actualHeight = Math.min(preferredDropdownHeight, spaceBelow - offsetY - 16);
     shouldOpenBelow = true;
-    console.log('[Model Dropdown] Position: below button', { actualHeight });
   } else {
     // 向上弹出，优先使用 preferredHeight，必要时才扩展到 maxHeight
     const availableHeight = spaceAbove - offsetY - topMargin;
@@ -1101,14 +1085,12 @@ const updateModelDropdownPosition = () => {
       actualHeight = Math.max(minDropdownHeight, availableHeight);
     }
     shouldOpenBelow = false;
-    console.log('[Model Dropdown] Position: above button', { actualHeight });
   }
 
   // 根据弹出方向使用不同的定位方式
   if (shouldOpenBelow) {
     // 向下弹出：使用 top 定位，左对齐
     const top = Math.floor(rect.bottom + offsetY);
-    console.log('[Model Dropdown] Opening below, top:', top);
     modelDropdownStyle.value = {
       position: 'fixed !important',
       width: `${dropdownWidth}px`,
@@ -1122,7 +1104,6 @@ const updateModelDropdownPosition = () => {
   } else {
     // 向上弹出：使用 bottom 定位，左对齐
     const bottom = vh - rect.top + offsetY;
-    console.log('[Model Dropdown] Opening above, bottom:', bottom);
     modelDropdownStyle.value = {
       position: 'fixed !important',
       width: `${dropdownWidth}px`,
@@ -1134,15 +1115,11 @@ const updateModelDropdownPosition = () => {
       padding: '0 !important'
     };
   }
-
-  console.log('[Model Dropdown] Applied style:', modelDropdownStyle.value);
 };
 
 // Mention Logic
 let lastMentionQuery = '';
 const loadMentionItems = async (q: string, resetIndex = true, append = false) => {
-  console.log('[Mention] loadMentionItems called with query:', q, 'append:', append);
-
   if (!append) {
     mentionOffset.value = 0;
   }
@@ -1348,7 +1325,6 @@ const loadMentionItems = async (q: string, resetIndex = true, append = false) =>
         fileTypesParam,
         searchOptions
       );
-      console.log('[Mention] searchKnowledge response:', res);
       if (res.data && Array.isArray(res.data)) {
         let files = res.data;
         const rawTotal = typeof res.total === 'number' ? res.total : undefined;
@@ -1412,7 +1388,6 @@ const loadMentionItems = async (q: string, resetIndex = true, append = false) =>
   } else {
     mentionItems.value = [...kbItems, ...tagItems, ...mcpItems, ...skillItems, ...fileItems];
   }
-  console.log('[Mention] Total items:', mentionItems.value.length, { kbItems: kbItems.length, fileItems: fileItems.length, tagItems: tagItems.length, mcpItems: mcpItems.length, skillItems: skillItems.length });
 
   // Only reset index if query changed or explicitly requested
   if (resetIndex || q !== lastMentionQuery) {
@@ -1458,8 +1433,6 @@ const onInput = (val: string | InputEvent) => {
   const cursor = textarea.selectionStart;
   const textBeforeCursor = inputVal.slice(0, cursor);
 
-  console.log('[Mention] onInput called', { inputVal, cursor, textBeforeCursor, showMention: showMention.value });
-
   if (showMention.value) {
     // 如果不是按钮触发的，检查 @ 符号
     if (!isMentionTriggeredByButton.value) {
@@ -1497,7 +1470,6 @@ const onInput = (val: string | InputEvent) => {
         return;
       }
 
-      console.log('[Mention] @ detected, opening menu');
       isMentionTriggeredByButton.value = false;
       mentionStartPos.value = cursor - 1;
       showMention.value = true;
@@ -1942,17 +1914,10 @@ const updateAgentModeDropdownPosition = () => {
 
   // 垂直位置：紧贴按钮，使用合理的高度避免空白
   const preferredDropdownHeight = 140; // Agent 模式选择器内容较少，用更小的优选高度
-  const maxDropdownHeight = 150;
   const minDropdownHeight = 100;
   const topMargin = 20;
   const spaceBelow = vh - rect.bottom;
   const spaceAbove = rect.top;
-
-  console.log('[Agent Dropdown] Space check:', {
-    spaceBelow,
-    spaceAbove,
-    windowHeight: vh
-  });
 
   let actualHeight: number;
 
@@ -1972,7 +1937,6 @@ const updateAgentModeDropdownPosition = () => {
       margin: '0 !important',
       padding: '0 !important',
     };
-    console.log('[Agent Dropdown] Position: below button', { actualHeight });
   } else {
     // 向上弹出，使用 bottom 定位确保紧贴按钮
     const availableHeight = spaceAbove - offsetY - topMargin;
@@ -1994,7 +1958,6 @@ const updateAgentModeDropdownPosition = () => {
       margin: '0 !important',
       padding: '0 !important',
     };
-    console.log('[Agent Dropdown] Position: above button', { actualHeight, bottom });
   }
 };
 
@@ -2387,8 +2350,6 @@ const handleStop = async () => {
     return;
   }
 
-  console.log('[Stop] Stopping generation for message:', props.assistantMessageId);
-
   // 发送 stop 事件，通知父组件立即清除 loading 状态
   emit('stop-generation');
 
@@ -2706,12 +2667,12 @@ const getImgSrc = (url: string) => {
   width: 100%;
   max-width: 800px;
   background: var(--td-bg-color-container, #FFF);
-  border-radius: 12px;
+  border-radius: var(--td-radius-large, 12px);
   border: 1px solid var(--td-component-stroke, #dcdcdc);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 8px 16px -4px rgba(0, 0, 0, 0.06);
 
   &:focus-within {
-    border-color: var(--td-brand-color, #07C05F);
+    border-color: var(--td-brand-color, #0071E3);
   }
 }
 
@@ -2736,12 +2697,14 @@ const getImgSrc = (url: string) => {
   gap: 5px;
   min-height: 26px;
   padding: 3px 7px 3px 6px;
-  border-radius: var(--td-radius-medium, 6px);
+  border-radius: var(--td-radius-default, 6px);
   box-sizing: border-box;
   font-size: 12px;
   font-weight: 500;
   cursor: default;
-  transition: background 0.15s, border-color 0.15s;
+  transition-property: background-color, border-color;
+  transition-duration: 150ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
   line-height: 18px;
 
   &:hover {
@@ -2810,7 +2773,9 @@ const getImgSrc = (url: string) => {
   font-weight: 400;
   cursor: pointer;
   opacity: 0.5;
-  transition: opacity 0.15s, background 0.15s, color 0.15s;
+  transition-property: opacity, background-color, color;
+  transition-duration: 150ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
   color: currentColor;
   flex-shrink: 0;
 }
@@ -2831,7 +2796,7 @@ const getImgSrc = (url: string) => {
 }
 
 .mention-chip--kb .mention-chip__icon-wrap {
-  color: var(--td-brand-color, #07c05f);
+  color: var(--td-brand-color, #0071E3);
 }
 
 .mention-chip--faq {
@@ -2885,7 +2850,7 @@ const getImgSrc = (url: string) => {
   line-height: 24px;
   font-family: var(--app-font-family);
   padding: 12px 16px 56px 16px;
-  border-radius: 0 0 12px 12px;
+  border-radius: 0 0 var(--td-radius-large, 12px) var(--td-radius-large, 12px);
   border: none;
   box-sizing: border-box;
   background: transparent;
@@ -2907,7 +2872,7 @@ const getImgSrc = (url: string) => {
 
 /* 当没有选中标签时，textarea 样式 */
 .rich-input-container:not(:has(.selected-tags-inline)) :deep(.t-textarea__inner) {
-  border-radius: 12px;
+  border-radius: var(--td-radius-large, 12px);
   padding-top: 16px;
 }
 
@@ -2948,10 +2913,12 @@ const getImgSrc = (url: string) => {
   justify-content: center;
   gap: 4px;
   padding: 6px 10px;
-  border-radius: 6px;
+  border-radius: var(--td-radius-default, 6px);
   color: var(--td-text-color-secondary, #666);
   cursor: pointer;
-  transition: background 0.12s, color 0.12s;
+  transition-property: background-color, color;
+  transition-duration: 120ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
   user-select: none;
   flex-shrink: 0;
 
@@ -2990,7 +2957,7 @@ const getImgSrc = (url: string) => {
   justify-content: center;
   width: 20px;
   height: 20px;
-  border-radius: 5px;
+  border-radius: var(--td-radius-small, 5px);
   flex-shrink: 0;
   color: var(--td-text-color-secondary, #666);
 }
@@ -3088,15 +3055,15 @@ const getImgSrc = (url: string) => {
   }
 
   &.active {
-    background: rgba(16, 185, 129, 0.1);
-    color: #07C05F;
+    background: rgba(0, 113, 227, 0.1);
+    color: var(--td-brand-color, #0071E3);
   }
 
   .image-count {
     position: absolute;
     top: -2px;
     right: -2px;
-    background: #07C05F;
+    background: var(--td-brand-color, #0071E3);
     color: #fff;
     font-size: 10px;
     width: 14px;
@@ -3127,15 +3094,15 @@ const getImgSrc = (url: string) => {
   }
 
   &.active {
-    background: rgba(16, 185, 129, 0.1);
-    color: #07C05F;
+    background: rgba(0, 113, 227, 0.1);
+    color: var(--td-brand-color, #0071E3);
   }
 
   .attachment-count {
     position: absolute;
     top: -2px;
     right: -2px;
-    background: #07C05F;
+    background: var(--td-brand-color, #0071E3);
     color: #fff;
     font-size: 10px;
     width: 14px;
@@ -3159,7 +3126,7 @@ const getImgSrc = (url: string) => {
   position: relative;
   width: 60px;
   height: 60px;
-  border-radius: 8px;
+  border-radius: var(--td-radius-medium, 8px);
   overflow: hidden;
   border: 1px solid var(--td-border-level-1-color, #e7e7e7);
 
@@ -3202,14 +3169,14 @@ const getImgSrc = (url: string) => {
   position: relative;
 
   &.active {
-    background: rgba(16, 185, 129, 0.1);
+    background: rgba(0, 113, 227, 0.1);
 
     .websearch-icon {
       color: var(--td-brand-color);
     }
 
     &:hover {
-      background: rgba(16, 185, 129, 0.15);
+      background: rgba(0, 113, 227, 0.15);
     }
   }
 
@@ -3236,7 +3203,7 @@ const getImgSrc = (url: string) => {
     }
 
     &.active:hover {
-      background: rgba(16, 185, 129, 0.1);
+      background: rgba(0, 113, 227, 0.1);
     }
   }
 }
@@ -3276,7 +3243,9 @@ const getImgSrc = (url: string) => {
   width: 10px;
   height: 10px;
   margin-left: 2px;
-  transition: transform 0.12s;
+  transition-property: transform;
+  transition-duration: 120ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 
   &.rotate {
     transform: rotate(180deg);
@@ -3293,21 +3262,21 @@ const getImgSrc = (url: string) => {
   width: 28px;
   height: 28px;
   padding: 0;
-  background: rgba(16, 185, 129, 0.08);
+  background: rgba(0, 113, 227, 0.08);
   color: var(--td-brand-color);
-  border: 1.5px solid rgba(16, 185, 129, 0.2);
+  border: 1.5px solid rgba(0, 113, 227, 0.2);
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
 
   &:hover {
-    background: rgba(16, 185, 129, 0.12);
+    background: rgba(0, 113, 227, 0.12);
     border-color: var(--td-brand-color);
   }
 
   &:active {
-    background: rgba(16, 185, 129, 0.15);
+    background: rgba(0, 113, 227, 0.15);
   }
 
   svg {
@@ -3350,7 +3319,7 @@ const getImgSrc = (url: string) => {
   }
 
   &.disabled {
-    background-color: var(--td-success-color-light);
+    background-color: var(--td-brand-color-disabled, rgba(0, 113, 227, 0.4));
   }
 
   img {
@@ -3381,9 +3350,11 @@ const getImgSrc = (url: string) => {
   padding: 2px 8px;
   min-width: 100px;
   height: 22px;
-  border-radius: 6px;
+  border-radius: var(--td-radius-default, 6px);
   border: .5px solid var(--td-component-border, #e7e7e7);
-  transition: background 0.12s, border-color 0.12s;
+  transition-property: background-color, border-color;
+  transition-duration: 120ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
   cursor: pointer;
 
   &:hover {
@@ -3415,7 +3386,9 @@ const getImgSrc = (url: string) => {
   height: 10px;
   color: var(--td-text-color-placeholder, #999);
   flex-shrink: 0;
-  transition: transform 0.12s;
+  transition-property: transform;
+  transition-duration: 120ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 
   &.rotate {
     transform: rotate(180deg);
@@ -3439,7 +3412,7 @@ const getImgSrc = (url: string) => {
   z-index: 10000;
   background: var(--td-bg-color-container);
   border: .5px solid var(--td-component-border);
-  border-radius: 10px;
+  border-radius: var(--td-radius-large, 10px);
   box-shadow: var(--td-shadow-2);
   overflow: hidden;
   display: flex;
@@ -3490,14 +3463,16 @@ const getImgSrc = (url: string) => {
   align-items: center;
   gap: 4px;
   padding: 2px 8px;
-  border-radius: 6px;
+  border-radius: var(--td-radius-default, 6px);
   border: .5px solid transparent;
   background: transparent;
   color: var(--td-brand-color);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.12s;
+  transition-property: color, background-color, border-color;
+  transition-duration: 120ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 
   .add-icon {
     font-size: 14px;
@@ -3516,8 +3491,10 @@ const getImgSrc = (url: string) => {
   align-items: center;
   padding: 6px 8px;
   cursor: pointer;
-  transition: background 0.12s;
-  border-radius: 6px;
+  transition-property: background-color;
+  transition-duration: 120ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
+  border-radius: var(--td-radius-default, 6px);
   margin-bottom: 4px;
 
   &:last-child {
@@ -3595,7 +3572,7 @@ const getImgSrc = (url: string) => {
   position: fixed !important;
   z-index: 9999;
   background: var(--td-bg-color-container, #fff);
-  border-radius: 10px;
+  border-radius: var(--td-radius-large, 10px);
   box-shadow: var(--td-shadow-2, 0 6px 28px rgba(15, 23, 42, 0.08));
   border: 1px solid var(--td-component-border, #e7e9eb);
   overflow: hidden;
@@ -3614,8 +3591,10 @@ const getImgSrc = (url: string) => {
   justify-content: space-between;
   padding: 8px 10px;
   cursor: pointer;
-  transition: background 0.12s;
-  border-radius: 6px;
+  transition-property: background-color;
+  transition-duration: 120ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
+  border-radius: var(--td-radius-default, 6px);
   position: relative;
   margin: 4px 6px;
 
@@ -3633,10 +3612,10 @@ const getImgSrc = (url: string) => {
   }
 
   &.selected {
-    background: var(--td-brand-color-light, #eefdf5);
+    background: var(--brand-color-with-opacity, rgba(0, 113, 227, 0.08));
 
     .agent-mode-option-name {
-      color: var(--td-success-color);
+      color: var(--td-brand-color, #0071E3);
       font-weight: 700;
     }
   }
@@ -3655,7 +3634,9 @@ const getImgSrc = (url: string) => {
   font-weight: 600;
   color: var(--td-text-color-primary, #222);
   line-height: 1.4;
-  transition: color 0.12s;
+  transition-property: color;
+  transition-duration: 120ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 .agent-mode-option-desc {
@@ -3667,7 +3648,7 @@ const getImgSrc = (url: string) => {
 .check-icon {
   width: 14px;
   height: 14px;
-  color: var(--td-success-color);
+  color: var(--td-brand-color, #0071E3);
   flex-shrink: 0;
   margin-left: 6px;
 }
@@ -3691,14 +3672,16 @@ const getImgSrc = (url: string) => {
 }
 
 .agent-mode-link {
-  color: var(--td-success-color);
+  color: var(--td-brand-color, #0071E3);
   text-decoration: none;
   font-size: 11px;
   font-weight: 500;
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  transition: all 0.12s;
+  transition-property: color, text-decoration;
+  transition-duration: 120ms;
+  transition-timing-function: var(--ease-out-apple, cubic-bezier(0.16, 1, 0.3, 1));
 
   &:hover {
     color: var(--td-brand-color-active);

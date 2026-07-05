@@ -2,7 +2,126 @@ import { markRaw, nextTick, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ensureRagPipelineHistoryStream } from '@/utils/rag-pipeline-history'
 
-export type ChatMessage = Record<string, unknown>
+/**
+ * ChatMessage — 聊天消息 + 流式事件的统一载体。
+ *
+ * 历史上是 `Record<string, unknown>`，没有任何字段提示，每加一个字段
+ * 都要去 grep 才知道叫什么。这里具名列出已知字段（全部可选，因为
+ * 不同生命周期阶段填充的字段集不同：用户消息 / 助手消息 / 流式事件 /
+ * 工具调用 / 审批卡片 / Agent step），同时保留 `[key: string]: unknown`
+ * index signature 以兼容尚未显式声明的后端字段——这样既获得了类型提示，
+ * 又不会因为后端新加字段就编译失败。
+ *
+ * 注意：`_eventMap` 与 `_pendingToolCalls` 是前端运行时状态（Map 实例），
+ * **不会**被序列化进 localStorage / 后端；它们只在内存中存在。
+ */
+export interface ChatMessage {
+  // ---- 基础字段（用户/助手消息共有）----
+  role?: 'user' | 'assistant' | 'system' | string
+  id?: string
+  request_id?: string
+  content?: string
+  is_completed?: boolean
+
+  // ---- 思考链（think tag）----
+  showThink?: boolean
+  thinkContent?: string
+  thinking?: boolean
+
+  // ---- Agent / RAG 模式标记 ----
+  isAgentMode?: boolean
+  isRagMode?: boolean
+  hideContent?: boolean
+  is_fallback?: boolean
+  agent_duration_ms?: number
+
+  // ---- Agent 事件流（运行时聚合）----
+  // agentEventStream 是当前消息收到的所有事件（thinking/tool_call/answer/
+  // stop/complete/...）的有序集合；markRaw 包裹避免 Vue 深度响应化。
+  agentEventStream?: ChatMessage[]
+  // _eventMap: event_id -> event 对象，用于按 id 累加 thinking/answer chunk
+  _eventMap?: Map<string, ChatMessage>
+  // _pendingToolCalls: tool_call_id -> tool_call event，用于匹配 tool_result
+  _pendingToolCalls?: Map<string, ChatMessage>
+
+  // ---- Agent 历史步骤（从后端拉取历史消息时填充）----
+  agent_steps?: unknown[]
+  knowledge_references?: unknown[]
+
+  // ---- 流式事件字段（onmessage 收到的 chunk）----
+  response_type?:
+    | 'agent_query'
+    | 'thinking'
+    | 'answer'
+    | 'tool_call'
+    | 'tool_result'
+    | 'tool_approval_required'
+    | 'tool_approval_resolved'
+    | 'mcp_oauth_required'
+    | 'mcp_oauth_resolved'
+    | 'references'
+    | 'reflection'
+    | 'complete'
+    | 'stop'
+    | 'error'
+    | string
+  /** SSE chunk 的 data.payload 子对象（不同事件类型 schema 不同） */
+  data?: ChatMessage
+  done?: boolean
+  session_id?: string
+  assistant_message_id?: string
+
+  // ---- 事件通用字段（agentEventStream 内部条目用）----
+  type?: string
+  event_id?: string
+  superseded?: boolean
+  timestamp?: number
+  startTime?: number
+  completed_at?: number
+  duration_ms?: number
+  duration?: number
+  reason?: string
+  total_duration_ms?: number
+  total_steps?: number
+
+  // ---- 工具调用字段 ----
+  tool_call_id?: string
+  tool_name?: string
+  tool_calls?: unknown[]
+  arguments?: unknown
+  pending?: boolean
+  success?: boolean
+  output?: string
+  error?: string
+  display_type?: string
+  tool_data?: ChatMessage
+
+  // ---- 审批 / OAuth 卡片字段 ----
+  pending_id?: string
+  service_id?: string
+  service_name?: string
+  mcp_tool_name?: string
+  description?: string
+  args_json?: string
+  timeout_seconds?: number
+  requested_at?: string
+  resolved?: boolean
+  approved?: boolean
+  authorized?: boolean
+  resolve_reason?: string
+  timed_out?: boolean
+  canceled?: boolean
+
+  // ---- Agent step 字段（agent_steps 数组元素的 schema）----
+  iteration?: number
+  thought?: string
+  reasoning_content?: string
+
+  // ---- 兜底：尚未显式声明的后端字段 ----
+  // 保留 index signature 是为了向后兼容——后端新加字段时前端不会编译失败，
+  // 但访问未声明字段时类型会回落到 unknown，强制调用方做类型收窄。
+  [key: string]: unknown
+}
 
 export interface UseChatStreamHandlerOptions {
   messagesList: ChatMessage[]
@@ -229,7 +348,9 @@ export function useChatStreamHandler(options: UseChatStreamHandlerOptions) {
     }
     ensureRagPipelineHistoryStream(item as Parameters<typeof ensureRagPipelineHistoryStream>[0])
     if (item.isRagMode && item.agentEventStream) {
-      item.agentEventStream = markRaw(item.agentEventStream as object)
+      // markRaw 返回 Raw<object>，与 ChatMessage[] 不直接兼容；这里只是
+      // 标记"不要响应化"，元素本身没变，所以用 unknown 双重断言收敛类型。
+      item.agentEventStream = markRaw(item.agentEventStream as object) as unknown as ChatMessage[]
     }
   }
 
@@ -293,22 +414,30 @@ export function useChatStreamHandler(options: UseChatStreamHandlerOptions) {
         }
 
         if (toolCalls && Array.isArray(toolCalls)) {
-          toolCalls.forEach((toolCall: ChatMessage) => {
-            if (toolCall.name === 'final_answer') return
-            const result = toolCall.result as ChatMessage | undefined
+          // tool_calls 在 ChatMessage 上是 unknown[]，元素 schema 来自后端
+          // agent_steps[].tool_calls，这里通过 unknown 收敛后断言为 ChatMessage。
+          toolCalls.forEach((rawToolCall: unknown) => {
+            const toolCall = rawToolCall as ChatMessage
+            // name / args / result / duration 不在已声明字段内，走 index signature
+            // 返回 unknown，需要显式断言成目标类型才能赋给强类型字段。
+            const toolName = toolCall['name'] as string | undefined
+            if (toolName === 'final_answer') return
+            const result = toolCall['result'] as ChatMessage | undefined
             const resultData = result?.data as ChatMessage | undefined
+            const args = toolCall['args']
+            const duration = toolCall['duration'] as number | undefined
             events.push({
               type: 'tool_call',
               tool_call_id: toolCall.id,
-              tool_name: toolCall.name,
-              arguments: toolCall.args,
+              tool_name: toolName,
+              arguments: args,
               pending: false,
               success: result?.success !== false,
               output: result?.output || '',
               error: result?.error || undefined,
               timestamp: stepTimestamp || undefined,
-              duration: toolCall.duration,
-              duration_ms: toolCall.duration,
+              duration,
+              duration_ms: duration,
               display_type: resultData?.display_type,
               tool_data: result?.data,
             })
@@ -364,10 +493,11 @@ export function useChatStreamHandler(options: UseChatStreamHandlerOptions) {
         item._eventMap = new Map()
         item._pendingToolCalls = new Map()
       } else {
-        item.agent_steps = item.agent_steps ? markRaw(item.agent_steps as object) : item.agent_steps
-        item.agentEventStream = markRaw((item.agentEventStream as unknown[]) || [])
-        item._eventMap = markRaw(new Map())
-        item._pendingToolCalls = markRaw(new Map())
+        item.agent_steps = item.agent_steps ? markRaw(item.agent_steps as object) as unknown as unknown[] : item.agent_steps
+        // markRaw 返回 Raw<object>，需要双重断言收敛回 ChatMessage[]。
+        item.agentEventStream = markRaw((item.agentEventStream as unknown[]) || []) as unknown as ChatMessage[]
+        item._eventMap = markRaw(new Map()) as unknown as Map<string, ChatMessage>
+        item._pendingToolCalls = markRaw(new Map()) as unknown as Map<string, ChatMessage>
       }
 
       if (item.agent_steps && Array.isArray(item.agent_steps) && item.agent_steps.length > 0) {
@@ -380,7 +510,7 @@ export function useChatStreamHandler(options: UseChatStreamHandlerOptions) {
             Boolean(item.is_fallback),
             Number(item.agent_duration_ms) || 0,
           ),
-        )
+        ) as unknown as ChatMessage[]
         item.hideContent = true
       }
 
