@@ -265,6 +265,32 @@ func (c *RemoteAPIChat) processRawHTTPStream(
 			if parsed != nil && parsed.FinishReason != "" {
 				state.lastFinishReason = parsed.FinishReason
 			}
+			// Accumulate provider-native tool calls (e.g. Anthropic tool_use /
+			// input_json_delta) into streamState so they are emitted in the
+			// final Done chunk, mirroring how the OpenAI path accumulates
+			// tool calls via processStreamDelta.
+			if parsed != nil && len(parsed.ToolCalls) > 0 {
+				var idxEv struct {
+					Index int `json:"index"`
+				}
+				_ = json.Unmarshal(event.Data, &idxEv)
+				for _, tc := range parsed.ToolCalls {
+					entry, exists := state.toolCallMap[idxEv.Index]
+					if !exists || entry == nil {
+						entry = &types.LLMToolCall{Type: tc.Type}
+						state.toolCallMap[idxEv.Index] = entry
+					}
+					if tc.ID != "" {
+						entry.ID = tc.ID
+					}
+					if tc.Function.Name != "" {
+						entry.Function.Name = tc.Function.Name
+					}
+					if tc.Function.Arguments != "" {
+						entry.Function.Arguments += tc.Function.Arguments
+					}
+				}
+			}
 
 			if done {
 				logUsage(ctx, c.modelName, state.usage)
@@ -274,6 +300,7 @@ func (c *RemoteAPIChat) processRawHTTPStream(
 					Done:         true,
 					Usage:        state.usage,
 					FinishReason: state.lastFinishReason,
+					ToolCalls:    state.buildOrderedToolCalls(),
 				}
 				return
 			}
