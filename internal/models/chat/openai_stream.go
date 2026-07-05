@@ -227,6 +227,59 @@ func (c *RemoteAPIChat) processRawHTTPStream(
 			dumper.WritePacketRaw(raw)
 		}
 
+		// Try adapter-native stream event parsing first (e.g. Anthropic SSE
+		// with event types like message_start, content_block_delta, etc.).
+		// If the adapter returns a non-nil response, handle it directly.
+		if parsed, done := c.adapter.ParseStreamEvent(event.Data); parsed != nil || done {
+			// Extract usage from raw event data (Anthropic embeds usage in
+			// message_start.message.usage and message_delta.usage).
+			var usageEv struct {
+				Message *struct {
+					Usage struct {
+						InputTokens  int `json:"input_tokens"`
+						OutputTokens int `json:"output_tokens"`
+					} `json:"usage"`
+				} `json:"message,omitempty"`
+				Usage *struct {
+					InputTokens  int `json:"input_tokens"`
+					OutputTokens int `json:"output_tokens"`
+				} `json:"usage,omitempty"`
+			}
+			_ = json.Unmarshal(event.Data, &usageEv)
+			if usageEv.Message != nil {
+				state.usage = mergeAnthropicUsage(state.usage,
+					usageEv.Message.Usage.InputTokens, usageEv.Message.Usage.OutputTokens)
+			}
+			if usageEv.Usage != nil {
+				state.usage = mergeAnthropicUsage(state.usage,
+					usageEv.Usage.InputTokens, usageEv.Usage.OutputTokens)
+			}
+
+			if parsed != nil && parsed.Content != "" {
+				streamChan <- types.StreamResponse{
+					ResponseType: types.ResponseTypeAnswer,
+					Content:      parsed.Content,
+					Done:         false,
+				}
+			}
+			if parsed != nil && parsed.FinishReason != "" {
+				state.lastFinishReason = parsed.FinishReason
+			}
+
+			if done {
+				logUsage(ctx, c.modelName, state.usage)
+				streamChan <- types.StreamResponse{
+					ResponseType: types.ResponseTypeAnswer,
+					Content:      "",
+					Done:         true,
+					Usage:        state.usage,
+					FinishReason: state.lastFinishReason,
+				}
+				return
+			}
+			continue
+		}
+
 		// 使用局部结构体进行一次性解析，同时捕捉标准字段和 vLLM 的 reasoning 字段，避免性能损失
 		var streamResp struct {
 			openai.ChatCompletionStreamResponse

@@ -2,6 +2,7 @@ package chat
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -48,6 +49,23 @@ type providerAdapter interface {
 	// ForceRawHTTP forces the raw HTTP path even when the body is standard
 	// (needed by providers that must sign the exact request bytes). Default: false.
 	ForceRawHTTP() bool
+	// BuildRequestBody returns a provider-native request body that replaces the
+	// standard OpenAI-format body before serialization. Returning nil means
+	// "use the default OpenAI body" (the caller then falls through to
+	// buildProviderOpenAIRequest or the raw *openai.ChatCompletionRequest).
+	// Used by Anthropic to emit its own JSON structure (system field, content
+	// blocks, tool_use/tool_result) instead of the OpenAI shape.
+	BuildRequestBody(req *openai.ChatCompletionRequest, messages []Message) any
+	// ParseResponse parses a non-streaming HTTP response body into the internal
+	// ChatResponse type. Returning nil means "use the default OpenAI parsing"
+	// (the caller unmarshals as openai.ChatCompletionResponse). Used by Anthropic
+	// whose response JSON has a completely different structure.
+	ParseResponse(body []byte) (*types.ChatResponse, error)
+	// ParseStreamEvent parses a single SSE event's data payload into a
+	// StreamResponse. Returning nil means "use the default OpenAI SSE parsing".
+	// Used by Anthropic whose SSE event types (message_start, content_block_delta,
+	// etc.) differ from OpenAI's streaming delta shape.
+	ParseStreamEvent(data json.RawMessage) (*types.StreamResponse, bool)
 	// ExtractToolCallMetadata captures provider-specific state from a raw
 	// OpenAI-compatible tool_call object. Default: nil.
 	ExtractToolCallMetadata(raw json.RawMessage) types.ToolCallMetadata
@@ -73,6 +91,9 @@ func (baseProvider) Auth(req *http.Request, creds authCreds, _ []byte) {
 	req.Header.Set("Authorization", "Bearer "+creds.APIKey)
 }
 func (baseProvider) ForceRawHTTP() bool { return false }
+func (baseProvider) BuildRequestBody(*openai.ChatCompletionRequest, []Message) any { return nil }
+func (baseProvider) ParseResponse([]byte) (*types.ChatResponse, error) { return nil, nil }
+func (baseProvider) ParseStreamEvent(json.RawMessage) (*types.StreamResponse, bool) { return nil, false }
 func (baseProvider) ExtractToolCallMetadata(json.RawMessage) types.ToolCallMetadata {
 	return nil
 }
@@ -280,6 +301,114 @@ func (anthropicProvider) Endpoint(baseURL, _ string, _ bool) string {
 func (anthropicProvider) Auth(req *http.Request, creds authCreds, _ []byte) {
 	req.Header.Set("x-api-key", creds.APIKey)
 	req.Header.Set("anthropic-version", "2023-06-01")
+}
+
+// BuildRequestBody converts the OpenAI-format request to Anthropic's native JSON
+// structure. It uses convertToolsToAnthropic and convertMessagesToAnthropic to
+// translate tools and messages, then assembles a map with model, max_tokens,
+// system, messages, and optional tools/temperature/top_p fields.
+func (anthropicProvider) BuildRequestBody(req *openai.ChatCompletionRequest, _ []Message) any {
+	system, anthropicMsgs := convertMessagesToAnthropic(req.Messages)
+
+	body := map[string]any{
+		"model":      req.Model,
+		"max_tokens": 1024,
+		"messages":   anthropicMsgs,
+	}
+	if system != "" {
+		body["system"] = system
+	}
+	if req.Stream {
+		body["stream"] = true
+	}
+
+	if req.MaxTokens > 0 {
+		body["max_tokens"] = req.MaxTokens
+	} else if req.MaxCompletionTokens > 0 {
+		body["max_tokens"] = req.MaxCompletionTokens
+	}
+
+	if req.Temperature > 0 {
+		body["temperature"] = req.Temperature
+	}
+	if req.TopP > 0 {
+		body["top_p"] = req.TopP
+	}
+
+	if len(req.Tools) > 0 {
+		body["tools"] = convertToolsToAnthropic(req.Tools)
+	}
+
+	return body
+}
+
+// ParseResponse parses a non-streaming Anthropic HTTP response body into the
+// internal ChatResponse type. Anthropic's response has content blocks (not
+// choices), usage with input_tokens/output_tokens (not prompt_tokens), and
+// stop_reason (not finish_reason).
+func (anthropicProvider) ParseResponse(body []byte) (*types.ChatResponse, error) {
+	var resp struct {
+		Content []struct {
+			Type string `json:"type"`
+			Text string `json:"text"`
+		} `json:"content"`
+		StopReason string `json:"stop_reason"`
+		Usage      struct {
+			InputTokens  int `json:"input_tokens"`
+			OutputTokens int `json:"output_tokens"`
+		} `json:"usage"`
+	}
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("decode anthropic response: %w", err)
+	}
+
+	parts := make([]string, 0, len(resp.Content))
+	for _, part := range resp.Content {
+		if part.Type == "text" && part.Text != "" {
+			parts = append(parts, part.Text)
+		}
+	}
+
+	return &types.ChatResponse{
+		Content:      strings.Join(parts, ""),
+		FinishReason: resp.StopReason,
+		Usage: types.TokenUsage{
+			PromptTokens:     resp.Usage.InputTokens,
+			CompletionTokens: resp.Usage.OutputTokens,
+			TotalTokens:      resp.Usage.InputTokens + resp.Usage.OutputTokens,
+		},
+	}, nil
+}
+
+// ParseStreamEvent extracts the event type from the SSE data payload and
+// delegates to convertAnthropicSSEToOpenAI. The SSE reader only returns data
+// lines (not event: lines), but Anthropic embeds the event type in the JSON
+// "type" field, so we can extract it from the data itself.
+// For message_delta events, the raw Anthropic stop_reason is preserved
+// (not converted to the OpenAI equivalent) to maintain backward compatibility
+// with the old AnthropicChat behavior.
+func (anthropicProvider) ParseStreamEvent(data json.RawMessage) (*types.StreamResponse, bool) {
+	var ev struct {
+		Type string `json:"type"`
+	}
+	if err := json.Unmarshal(data, &ev); err != nil {
+		return &types.StreamResponse{}, false
+	}
+	resp, done := convertAnthropicSSEToOpenAI(ev.Type, data)
+	// For message_delta, override the converted finish reason with the raw
+	// Anthropic stop_reason to maintain backward compatibility.
+	if ev.Type == "message_delta" && resp != nil {
+		var delta struct {
+			Delta struct {
+				StopReason string `json:"stop_reason"`
+			} `json:"delta"`
+		}
+		_ = json.Unmarshal(data, &delta)
+		if delta.Delta.StopReason != "" {
+			resp.FinishReason = delta.Delta.StopReason
+		}
+	}
+	return resp, done
 }
 
 // providerRegistry is ordered: more specific adapters (those with a real

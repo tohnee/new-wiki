@@ -241,6 +241,7 @@ func TestNewRemoteChat_AnthropicProvider(t *testing.T) {
 		Provider:  string(provider.ProviderAnthropic),
 	})
 	require.NoError(t, err)
-	_, ok := chat.(*AnthropicChat)
+	// After Phase 4: Anthropic goes through unified RemoteAPIChat path.
+	_, ok := chat.(*RemoteAPIChat)
 	assert.True(t, ok)
 }

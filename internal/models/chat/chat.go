@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tencent/WeKnora/internal/models/provider"
 	"github.com/Tencent/WeKnora/internal/models/utils/ollama"
 	"github.com/Tencent/WeKnora/internal/types"
 )
@@ -151,15 +150,8 @@ func NewChat(config *ChatConfig, ollamaService *ollama.OllamaService) (Chat, err
 }
 
 // NewRemoteChat 根据 provider 创建远程聊天实例。
-// Anthropic 走独立的 Messages 协议实现；其余 OpenAI 兼容供应商统一由
-// RemoteAPIChat 处理，provider 特定行为在构造时通过 providerAdapter 解析。
+// 所有 provider（包括 Anthropic）统一由 RemoteAPIChat 处理，provider 特定
+// 行为在构造时通过 providerAdapter 解析（见 provider.go）。
 func NewRemoteChat(config *ChatConfig) (Chat, error) {
-	providerName := provider.ProviderName(config.Provider)
-	if providerName == "" {
-		providerName = provider.DetectProvider(config.BaseURL)
-	}
-	if providerName == provider.ProviderAnthropic {
-		return NewAnthropicChat(config)
-	}
 	return NewRemoteAPIChat(config)
 }

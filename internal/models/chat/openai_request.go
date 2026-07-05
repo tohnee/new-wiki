@@ -235,6 +235,12 @@ func (c *RemoteAPIChat) buildProviderOpenAIRequest(
 }
 
 func (c *RemoteAPIChat) shapeProviderRequest(body any, req openai.ChatCompletionRequest, messages []Message) (any, error) {
+	// Let the adapter produce a provider-native body (e.g. Anthropic's JSON
+	// structure with system field and content blocks). If the adapter returns
+	// nil, fall through to the default OpenAI-compatible body handling.
+	if nativeBody := c.adapter.BuildRequestBody(&req, messages); nativeBody != nil {
+		return nativeBody, nil
+	}
 	if !c.adapter.ForceRawHTTP() {
 		return body, nil
 	}

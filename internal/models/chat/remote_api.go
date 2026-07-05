@@ -245,6 +245,14 @@ func (c *RemoteAPIChat) chatWithRawHTTP(ctx context.Context, endpoint string, cu
 		return nil, fmt.Errorf("read response: %w", err)
 	}
 
+	// Let the adapter parse the response natively (e.g. Anthropic's content
+	// blocks format). If the adapter returns nil, fall through to the default
+	// OpenAI-compatible parsing.
+	if result, err := c.adapter.ParseResponse(body); result != nil {
+		logUsage(ctx, c.modelName, &result.Usage)
+		return result, err
+	}
+
 	var chatResp openai.ChatCompletionResponse
 	if err := json.Unmarshal(body, &chatResp); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
